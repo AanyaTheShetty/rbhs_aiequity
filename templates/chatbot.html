@@ -577,7 +577,8 @@
 
       const data = await response.json();
 
-      if (data.success) {
+      // Check if the HTTP response was successful (status 200-299)
+      if (response.ok && data.success) {
         // Add bot response
         addMessage(data.response, false);
         

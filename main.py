@@ -646,9 +646,9 @@ RESPONSE GUIDELINES:
         chat = model.start_chat(history=messages)
         
         # Send the user's message with retry logic
+        response_text = None
         try:
             # Use direct chat.send_message with retry logic
-            last_error = None
             max_retries = 3
             initial_delay = 1
             
@@ -656,9 +656,8 @@ RESPONSE GUIDELINES:
                 try:
                     response = chat.send_message(user_message)
                     response_text = response.text.strip()
-                    break
+                    break  # Success, exit the loop
                 except Exception as e:
-                    last_error = e
                     error_msg = str(e).lower()
                     
                     # Check if it's a retryable error
@@ -673,6 +672,7 @@ RESPONSE GUIDELINES:
                     )
                     
                     if not is_retryable or attempt == max_retries - 1:
+                        # Not retryable or last attempt, raise the error
                         raise
                     
                     # Calculate delay with exponential backoff
@@ -680,6 +680,10 @@ RESPONSE GUIDELINES:
                     print(f"Chatbot API attempt {attempt + 1} failed: {e}")
                     print(f"Retrying in {delay} seconds...")
                     time.sleep(delay)
+            
+            # Check if we got a response
+            if response_text is None:
+                raise Exception("Failed to get response from Gemini API")
         except Exception as gemini_error:
             error_msg = str(gemini_error).lower()
             
