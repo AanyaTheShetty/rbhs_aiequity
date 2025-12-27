@@ -7,6 +7,7 @@ from PIL import Image
 from gradio_client import Client, handle_file
 import tempfile
 from werkzeug.utils import secure_filename
+import time
 
 # Common food items that work well with Calorie Ninja API
 CALORIE_NINJA_FOODS = [
@@ -59,6 +60,53 @@ def get_gradio_client():
     return GRADIO_CLIENT
 
 # ============== HELPER FUNCTIONS ==============
+
+def call_gemini_with_retry(model, prompt, max_retries=3, initial_delay=1):
+    """
+    Call Gemini API with exponential backoff retry logic
+    
+    Args:
+        model: Gemini model instance
+        prompt: The prompt to send
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay in seconds before first retry
+    
+    Returns:
+        Response text from Gemini
+    """
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            last_error = e
+            error_msg = str(e).lower()
+            
+            # Check if it's a retryable error
+            is_retryable = (
+                'rate limit' in error_msg or
+                'quota' in error_msg or
+                'timeout' in error_msg or
+                'temporarily unavailable' in error_msg or
+                '429' in error_msg or
+                '503' in error_msg or
+                '500' in error_msg
+            )
+            
+            if not is_retryable or attempt == max_retries - 1:
+                # Don't retry for non-retryable errors or on last attempt
+                raise
+            
+            # Calculate delay with exponential backoff
+            delay = initial_delay * (2 ** attempt)
+            print(f"Gemini API attempt {attempt + 1} failed: {e}")
+            print(f"Retrying in {delay} seconds...")
+            time.sleep(delay)
+    
+    # This shouldn't be reached, but just in case
+    raise last_error
 
 def clean_ingredient_name(name):
     """Clean up ingredient name for display"""
@@ -303,10 +351,8 @@ def identify_food():
                     }
                 )
 
-                gemini_response = model.generate_content(prompt)
-
+                gemini_advice = call_gemini_with_retry(model, prompt, max_retries=3, initial_delay=1)
                 
-                gemini_advice = gemini_response.text.strip()
                 print(f"SUCCESS! Gemini advice received ({len(gemini_advice)} characters)")
                 print(f"Advice preview: {gemini_advice[:100]}...")
                 print("=" * 50)
@@ -502,8 +548,7 @@ def override_food():
                     }
                 )
 
-                gemini_response = model.generate_content(prompt)
-                gemini_advice = gemini_response.text.strip()
+                gemini_advice = call_gemini_with_retry(model, prompt, max_retries=3, initial_delay=1)
                 
                 print(f"Gemini advice received: {gemini_advice[:100]}...")
                 
@@ -545,7 +590,13 @@ def chatbot():
         
         print(f"Chatbot request: {user_message}")
         
-        # System prompt to keep conversation on-topic
+        if not GOOGLE_API_KEY:
+            return jsonify({
+                'success': False,
+                'error': 'Chatbot service is currently unavailable. Please try again later.'
+            }), 503
+        
+        # Enhanced system prompt with topic filtering built-in
         system_prompt = """You are a helpful diabetes assistant specialized in helping diabetic patients. 
 You can answer questions about:
 - Glucose monitoring and blood sugar management
@@ -553,22 +604,26 @@ You can answer questions about:
 - Diabetes medications and treatments
 - Symptoms, complications, and general diabetes care
 - Lifestyle modifications for diabetes management
+- Exercise and physical activity for diabetics
+- Stress management and mental health related to diabetes
 
-IMPORTANT GUIDELINES:
-1. Stay focused on diabetes-related topics
-2. If asked about non-diabetes topics, politely redirect the conversation back to diabetes care
-3. Provide accurate, helpful, and supportive information
-4. Be concise but thorough in your responses
-5. Always recommend consulting healthcare professionals for medical decisions
-6. Use a friendly, encouraging tone
+CRITICAL INSTRUCTION - STAY ON TOPIC:
+If the user asks about topics UNRELATED to diabetes (like politics, sports, general knowledge, other medical conditions, etc.), you MUST respond with:
+"I'm specialized in diabetes care and management. I can help with questions about glucose monitoring, nutrition for diabetics, medications, symptoms, and lifestyle management. Is there anything diabetes-related I can help you with?"
 
-If the user asks about something unrelated to diabetes, politely say: "I'm specialized in diabetes care and can help with questions about glucose monitoring, nutrition, medications, and diabetes management. Is there anything diabetes-related I can help you with?"
+RESPONSE GUIDELINES:
+1. Provide accurate, helpful, and supportive information
+2. Be concise but thorough - aim for 2-4 paragraphs
+3. Always recommend consulting healthcare professionals for medical decisions
+4. Use a friendly, encouraging, and empathetic tone
+5. Break down complex topics into easy-to-understand language
+6. Provide practical, actionable advice when appropriate
 """
         
         # Build conversation context
         messages = []
         
-        # Add recent history (last 5 exchanges to keep context manageable)
+        # Add recent history (last 10 messages to keep context manageable)
         recent_history = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
         for msg in recent_history:
             messages.append({
@@ -576,29 +631,13 @@ If the user asks about something unrelated to diabetes, politely say: "I'm speci
                 'parts': [msg['content']]
             })
         
-        # Check if the question is diabetes-related
-        relevance_check = genai.GenerativeModel("gemini-2.5-flash")
-        check_prompt = f"""Is this question related to diabetes, glucose, nutrition for diabetics, diabetes medications, or diabetes care?
-Question: "{user_message}"
-
-Answer with just "YES" or "NO"."""
-        
-        relevance_response = relevance_check.generate_content(check_prompt)
-        is_relevant = "YES" in relevance_response.text.upper()
-        
-        if not is_relevant:
-            response_text = "I'm specialized in diabetes care and can help with questions about glucose monitoring, nutrition, medications, and diabetes management. Is there anything diabetes-related I can help you with?"
-            return jsonify({
-                'success': True,
-                'response': response_text
-            }), 200
-        
-        # Generate response using Gemini
+        # Generate response using Gemini with retry logic
         model = genai.GenerativeModel(
             "gemini-2.5-flash",
             generation_config={
                 "response_mime_type": "text/plain",
                 "temperature": 0.7,
+                "max_output_tokens": 1024,  # Limit response length
             },
             system_instruction=system_prompt
         )
@@ -606,9 +645,37 @@ Answer with just "YES" or "NO"."""
         # Create chat session with history
         chat = model.start_chat(history=messages)
         
-        # Send the user's message
-        response = chat.send_message(user_message)
-        response_text = response.text.strip()
+        # Send the user's message with retry logic
+        try:
+            response_text = call_gemini_with_retry(chat, user_message, max_retries=3, initial_delay=1)
+        except Exception as gemini_error:
+            error_msg = str(gemini_error).lower()
+            
+            # Provide specific error messages based on error type
+            if 'rate limit' in error_msg or 'quota' in error_msg or '429' in error_msg:
+                return jsonify({
+                    'success': False,
+                    'error': 'The chatbot is experiencing high demand. Please wait a moment and try again.'
+                }), 429
+            elif 'timeout' in error_msg:
+                return jsonify({
+                    'success': False,
+                    'error': 'The request timed out. Please try again.'
+                }), 504
+            elif 'api key' in error_msg or 'authentication' in error_msg:
+                return jsonify({
+                    'success': False,
+                    'error': 'Chatbot service configuration error. Please contact support.'
+                }), 503
+            else:
+                # Generic error
+                print(f"Gemini API error: {gemini_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({
+                    'success': False,
+                    'error': 'I apologize, but I encountered an error. Please try again.'
+                }), 500
         
         print(f"Chatbot response: {response_text[:100]}...")
         
@@ -623,7 +690,7 @@ Answer with just "YES" or "NO"."""
         traceback.print_exc()
         return jsonify({
             'success': False,
-            'error': 'An error occurred while processing your request'
+            'error': 'An unexpected error occurred. Please try again.'
         }), 500
 
 if __name__ == "__main__":
