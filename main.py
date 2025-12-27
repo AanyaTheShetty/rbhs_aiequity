@@ -647,7 +647,39 @@ RESPONSE GUIDELINES:
         
         # Send the user's message with retry logic
         try:
-            response_text = call_gemini_with_retry(chat, user_message, max_retries=3, initial_delay=1)
+            # Use direct chat.send_message with retry logic
+            last_error = None
+            max_retries = 3
+            initial_delay = 1
+            
+            for attempt in range(max_retries):
+                try:
+                    response = chat.send_message(user_message)
+                    response_text = response.text.strip()
+                    break
+                except Exception as e:
+                    last_error = e
+                    error_msg = str(e).lower()
+                    
+                    # Check if it's a retryable error
+                    is_retryable = (
+                        'rate limit' in error_msg or
+                        'quota' in error_msg or
+                        'timeout' in error_msg or
+                        'temporarily unavailable' in error_msg or
+                        '429' in error_msg or
+                        '503' in error_msg or
+                        '500' in error_msg
+                    )
+                    
+                    if not is_retryable or attempt == max_retries - 1:
+                        raise
+                    
+                    # Calculate delay with exponential backoff
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"Chatbot API attempt {attempt + 1} failed: {e}")
+                    print(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
         except Exception as gemini_error:
             error_msg = str(gemini_error).lower()
             
