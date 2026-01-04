@@ -43,35 +43,21 @@ CALORIENINJA_API_KEY = os.environ.get("CALORIENINJA_API_KEY")
 # Configure Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Initialize Gradio clients
+# Initialize Gradio client
 GRADIO_CLIENT = None
-GRADIO_CLIENT_MULTI = None
 
 def get_gradio_client():
-    """Lazy initialization of Gradio client for single items"""
+    """Lazy initialization of Gradio client"""
     global GRADIO_CLIENT
     if GRADIO_CLIENT is None:
         try:
-            print("Initializing Gradio client for single items...")
+            print("Initializing Gradio client for fredsok/ingredientsmodel...")
             GRADIO_CLIENT = Client("calcuplate/ingredientClassificationModel")
-            print("✓ Gradio client for single items initialized successfully")
+            print("✓ Gradio client initialized successfully")
         except Exception as e:
             print(f"Error initializing Gradio client: {e}")
             raise
     return GRADIO_CLIENT
-
-def get_gradio_client_multi():
-    """Lazy initialization of Gradio client for multiple items"""
-    global GRADIO_CLIENT_MULTI
-    if GRADIO_CLIENT_MULTI is None:
-        try:
-            print("Initializing Gradio client for multiple items...")
-            GRADIO_CLIENT_MULTI = Client("rbhsaiep/ImprovedIngredientsModel")
-            print("✓ Gradio client for multiple items initialized successfully")
-        except Exception as e:
-            print(f"Error initializing Gradio client for multiple items: {e}")
-            raise
-    return GRADIO_CLIENT_MULTI
 
 # ============== HELPER FUNCTIONS ==============
 
@@ -129,11 +115,11 @@ def clean_ingredient_name(name):
     name = name.replace('_', ' ')
     return name.title()
 
-def predict_ingredients_gradio(file_path, use_multi=False):
+def predict_ingredients_gradio(file_path):
     """Predict ingredients from image file using Gradio model"""
     try:
         print("=" * 50)
-        print(f"CALLING GRADIO MODEL API ({'MULTI' if use_multi else 'SINGLE'} ITEMS)")
+        print("CALLING GRADIO MODEL API")
         print(f"Image file path: {file_path}")
         
         # Verify file exists and has content
@@ -146,8 +132,8 @@ def predict_ingredients_gradio(file_path, use_multi=False):
         if file_size == 0:
             raise Exception("Image file is empty")
         
-        # Get appropriate Gradio client
-        client = get_gradio_client_multi() if use_multi else get_gradio_client()
+        # Get Gradio client
+        client = get_gradio_client()
         
         # Call the prediction API with the file path directly
         print("Calling Gradio predict API...")
@@ -261,10 +247,6 @@ def identify_food():
                 nutritional_needs = json.loads(raw_needs)
             except:
                 nutritional_needs = []
-            
-            # Optional: detection mode (single or multiple items)
-            use_multi = request.form.get("use_multi", "false").lower() == "true"
-            print(f"Detection mode: {'Multiple items' if use_multi else 'Single item'}")
 
             # Save uploaded file to temporary location
             filename = secure_filename(file.filename)
@@ -282,243 +264,126 @@ def identify_food():
             print(f"File size: {os.path.getsize(temp_file_path)} bytes")
 
             # ================== RUN GRADIO PREDICTOR ==================
-            predictions = predict_ingredients_gradio(temp_file_path, use_multi=use_multi)
+            predictions = predict_ingredients_gradio(temp_file_path)
 
             if not predictions:
                 return jsonify({'error': 'No ingredients detected'}), 400
 
-            # ================== CALORIE NINJA NUTRITION & GEMINI ADVICE ==================
-            if use_multi:
-                # For multiple items, get nutrition for top 5 items
-                concepts_with_nutrition = []
-                all_food_names = []
-                all_nutrition_info = []
-                
-                for pred in predictions[:5]:
-                    food_name = pred['name']
-                    all_food_names.append(food_name)
-                    
-                    # Get nutrition data for this food
-                    nutrition_data = None
-                    try:
-                        if CALORIENINJA_API_KEY:
-                            resp = requests.get(
-                                f'https://api.calorieninjas.com/v1/nutrition?query={food_name}',
-                                headers={'X-Api-Key': CALORIENINJA_API_KEY},
-                                timeout=6
-                            )
-                            if resp.status_code == 200:
-                                items = resp.json().get('items', [])
-                                if items:
-                                    item = items[0]
-                                    nutrition_data = {
-                                        'calories': item.get('calories', 0),
-                                        'protein_g': item.get('protein_g', 0),
-                                        'carbohydrates_total_g': item.get('carbohydrates_total_g', 0),
-                                        'fat_total_g': item.get('fat_total_g', 0),
-                                        'fiber_g': item.get('fiber_g', 0),
-                                        'sugar_g': item.get('sugar_g', 0),
-                                        'sodium_mg': item.get('sodium_mg', 0),
-                                        'serving_size_g': item.get('serving_size_g', 100)
-                                    }
-                                    all_nutrition_info.append({
-                                        'name': food_name,
-                                        'nutrition': nutrition_data
-                                    })
-                    except Exception as e:
-                        print(f"CalorieNinja error for {food_name}:", e)
-                    
-                    concepts_with_nutrition.append({
-                        'name': food_name,
-                        'value': pred['value'],
-                        'nutrition': nutrition_data
-                    })
-                
-                # Generate Gemini advice for all items
-                gemini_advice = None
-                try:
-                    if GOOGLE_API_KEY and all_nutrition_info:
-                        # Build comprehensive prompt for multiple items
-                        items_summary = []
-                        for item_info in all_nutrition_info:
-                            n = item_info['nutrition']
-                            items_summary.append(
-                                f"{item_info['name']}: {n['calories']} calories, "
-                                f"{n['protein_g']}g protein, {n['carbohydrates_total_g']}g carbs, "
-                                f"{n['fat_total_g']}g fat"
-                            )
-                        
-                        items_text = "; ".join(items_summary)
-                        foods_list = ", ".join(all_food_names)
-                        
+            # Top prediction
+            top_prediction = predictions[0]
+            top_food = top_prediction['name']
+            max_confidence = top_prediction['value']
+
+            # ================== CALORIE NINJA NUTRITION ==================
+            nutrition_data = None
+            try:
+                if CALORIENINJA_API_KEY:
+                    resp = requests.get(
+                        f'https://api.calorieninjas.com/v1/nutrition?query={top_food}',
+                        headers={'X-Api-Key': CALORIENINJA_API_KEY},
+                        timeout=6
+                    )
+                    if resp.status_code == 200:
+                        items = resp.json().get('items', [])
+                        if items:
+                            item = items[0]
+                            nutrition_data = {
+                                'calories': item.get('calories', 0),
+                                'protein_g': item.get('protein_g', 0),
+                                'carbohydrates_total_g': item.get('carbohydrates_total_g', 0),
+                                'fat_total_g': item.get('fat_total_g', 0),
+                                'fiber_g': item.get('fiber_g', 0),
+                                'sugar_g': item.get('sugar_g', 0),
+                                'sodium_mg': item.get('sodium_mg', 0),
+                                'serving_size_g': item.get('serving_size_g', 100)
+                            }
+            except Exception as e:
+                print("CalorieNinja error:", e)
+
+            # ================== GEMINI ADVICE (simple prompt) ==================
+            gemini_advice = None
+            try:
+                if GOOGLE_API_KEY:
+                    if nutrition_data:
+                        calories = nutrition_data['calories']
+                        protein = nutrition_data['protein_g']
+                        carbs = nutrition_data['carbohydrates_total_g']
+                        fat = nutrition_data['fat_total_g']
+                        fiber = nutrition_data['fiber_g']
+                        sugar = nutrition_data['sugar_g']
+                        sodium = nutrition_data['sodium_mg']
+
                         if nutritional_needs:
                             needs_str = ", ".join(nutritional_needs)
                             prompt = (
-                                f"You are a nutrition expert. Multiple food items were detected: {foods_list}. "
-                                f"Nutritional breakdown: {items_text}. "
+                                f"You are a nutrition expert. The food identified is {top_food}. "
+                                f"Nutritional information: {calories} calories, {protein}g protein, "
+                                f"{carbs}g carbohydrates, {fat}g fat, {fiber}g fiber, {sugar}g sugar, {sodium}mg sodium. "
                                 f"The person has the following nutritional needs/preferences: {needs_str}. "
-                                f"In 3-4 sentences, provide practical advice about this combination of foods "
-                                f"and whether it aligns with their nutritional goals. "
+                                f"In 2-3 sentences, provide practical, actionable advice about whether this food is a good choice for their needs. "
+                                f"Be specific about how the nutritional content aligns (or doesn't align) with their requirements. "
                                 f"Keep it conversational and supportive."
                             )
-                        else:
-                            prompt = (
-                                f"You are a nutrition expert. Multiple food items were detected: {foods_list}. "
-                                f"Nutritional breakdown: {items_text}. "
-                                f"In 3-4 sentences, provide practical health advice about this combination of foods. "
-                                f"Comment on the overall nutritional balance and any key benefits or concerns. "
-                                f"Keep it conversational and supportive."
-                            )
-                        
-                        print(f"Multi-item Gemini prompt (first 150 chars): {prompt[:150]}...")
-                        print("Calling Gemini API for multiple items...")
-                        
-                        model = genai.GenerativeModel(
-                            "gemini-2.5-flash",
-                            generation_config={
-                                "response_mime_type": "text/plain"
-                            }
-                        )
-                        
-                        gemini_advice = call_gemini_with_retry(model, prompt, max_retries=3, initial_delay=1)
-                        print(f"SUCCESS! Multi-item Gemini advice received ({len(gemini_advice)} characters)")
-                        
-                except Exception as gemini_error:
-                    print(f"GEMINI ERROR (multi-item): {str(gemini_error)}")
-                    import traceback
-                    traceback.print_exc()
-                
-                # Add gemini advice to all concepts
-                for concept in concepts_with_nutrition:
-                    concept['gemini_advice'] = gemini_advice
-                
-                # Build response
-                response_data = {
-                    'outputs': [
-                        {
-                            'data': {
-                                'concepts': concepts_with_nutrition
-                            }
-                        }
-                    ]
-                }
-                
-            else:
-                # Single item mode (existing logic)
-                top_prediction = predictions[0]
-                top_food = top_prediction['name']
-                max_confidence = top_prediction['value']
-
-                # Get nutrition data
-                nutrition_data = None
-                try:
-                    if CALORIENINJA_API_KEY:
-                        resp = requests.get(
-                            f'https://api.calorieninjas.com/v1/nutrition?query={top_food}',
-                            headers={'X-Api-Key': CALORIENINJA_API_KEY},
-                            timeout=6
-                        )
-                        if resp.status_code == 200:
-                            items = resp.json().get('items', [])
-                            if items:
-                                item = items[0]
-                                nutrition_data = {
-                                    'calories': item.get('calories', 0),
-                                    'protein_g': item.get('protein_g', 0),
-                                    'carbohydrates_total_g': item.get('carbohydrates_total_g', 0),
-                                    'fat_total_g': item.get('fat_total_g', 0),
-                                    'fiber_g': item.get('fiber_g', 0),
-                                    'sugar_g': item.get('sugar_g', 0),
-                                    'sodium_mg': item.get('sodium_mg', 0),
-                                    'serving_size_g': item.get('serving_size_g', 100)
-                                }
-                except Exception as e:
-                    print("CalorieNinja error:", e)
-
-                # Generate Gemini advice
-                gemini_advice = None
-                try:
-                    if GOOGLE_API_KEY:
-                        if nutrition_data:
-                            calories = nutrition_data['calories']
-                            protein = nutrition_data['protein_g']
-                            carbs = nutrition_data['carbohydrates_total_g']
-                            fat = nutrition_data['fat_total_g']
-                            fiber = nutrition_data['fiber_g']
-                            sugar = nutrition_data['sugar_g']
-                            sodium = nutrition_data['sodium_mg']
-
-                            if nutritional_needs:
-                                needs_str = ", ".join(nutritional_needs)
-                                prompt = (
-                                    f"You are a nutrition expert. The food identified is {top_food}. "
-                                    f"Nutritional information: {calories} calories, {protein}g protein, "
-                                    f"{carbs}g carbohydrates, {fat}g fat, {fiber}g fiber, {sugar}g sugar, {sodium}mg sodium. "
-                                    f"The person has the following nutritional needs/preferences: {needs_str}. "
-                                    f"In 2-3 sentences, provide practical, actionable advice about whether this food is a good choice for their needs. "
-                                    f"Be specific about how the nutritional content aligns (or doesn't align) with their requirements. "
-                                    f"Keep it conversational and supportive."
-                                )
-                            else:
-                                prompt = (
-                                    f"You are a nutrition expert. The food identified is {top_food}. "
-                                    f"Nutritional information: {calories} calories, {protein}g protein, "
-                                    f"{carbs}g carbohydrates, {fat}g fat, {fiber}g fiber, {sugar}g sugar, {sodium}mg sodium. "
-                                    f"In 2-3 sentences, provide practical, actionable health advice about this food. "
-                                    f"Is this generally a good nutritional choice? What are the key benefits or concerns? "
-                                    f"Keep it conversational and supportive."
-                                )
                         else:
                             prompt = (
                                 f"You are a nutrition expert. The food identified is {top_food}. "
-                                f"In 2-3 sentences, provide practical health advice about this food. "
+                                f"Nutritional information: {calories} calories, {protein}g protein, "
+                                f"{carbs}g carbohydrates, {fat}g fat, {fiber}g fiber, {sugar}g sugar, {sodium}mg sodium. "
+                                f"In 2-3 sentences, provide practical, actionable health advice about this food. "
                                 f"Is this generally a good nutritional choice? What are the key benefits or concerns? "
                                 f"Keep it conversational and supportive."
                             )
-                    
-                        print(f"Prompt (first 100 chars): {prompt[:100]}...")
-                        print("Calling Gemini API NOW...")
-                        
-                        model = genai.GenerativeModel(
-                            "gemini-2.5-flash",
-                            generation_config={
-                                "response_mime_type": "text/plain"
-                            }
+                    else:
+                        prompt = (
+                            f"You are a nutrition expert. The food identified is {top_food}. "
+                            f"In 2-3 sentences, provide practical health advice about this food. "
+                            f"Is this generally a good nutritional choice? What are the key benefits or concerns? "
+                            f"Keep it conversational and supportive."
                         )
+                
+                print(f"Prompt (first 100 chars): {prompt[:100]}...")
+                print("Calling Gemini API NOW...")
+                
+                model = genai.GenerativeModel(
+                    "gemini-2.5-flash",
+                    generation_config={
+                        "response_mime_type": "text/plain"
+                    }
+                )
 
-                        gemini_advice = call_gemini_with_retry(model, prompt, max_retries=3, initial_delay=1)
-                        
-                        print(f"SUCCESS! Gemini advice received ({len(gemini_advice)} characters)")
-                        print(f"Advice preview: {gemini_advice[:100]}...")
-                        print("=" * 50)
-                        
-                except Exception as gemini_error:
-                    print("=" * 50)
-                    print(f"GEMINI ERROR: {str(gemini_error)}")
-                    print("Error type:", type(gemini_error).__name__)
-                    import traceback
-                    traceback.print_exc()
-                    print("=" * 50)
+                gemini_advice = call_gemini_with_retry(model, prompt, max_retries=3, initial_delay=1)
                 
-                # Build response in Clarifai format for compatibility with frontend
-                response_data = {
-                    'outputs': [
-                        {
-                            'data': {
-                                'concepts': []
-                            }
+                print(f"SUCCESS! Gemini advice received ({len(gemini_advice)} characters)")
+                print(f"Advice preview: {gemini_advice[:100]}...")
+                print("=" * 50)
+                
+            except Exception as gemini_error:
+                print("=" * 50)
+                print(f"GEMINI ERROR: {str(gemini_error)}")
+                print("Error type:", type(gemini_error).__name__)
+                import traceback
+                traceback.print_exc()
+                print("=" * 50)
+            
+            # Build response in Clarifai format for compatibility with frontend
+            response_data = {
+                'outputs': [
+                    {
+                        'data': {
+                            'concepts': []
                         }
-                    ]
-                }
-                
-                # Add all predictions as concepts
-                for pred in predictions:
-                    response_data['outputs'][0]['data']['concepts'].append({
-                        'name': pred['name'],
-                        'value': pred['value'],
-                        'nutrition': nutrition_data if pred == predictions[0] else None,
-                        'gemini_advice': gemini_advice if pred == predictions[0] else None
-                    })
+                    }
+                ]
+            }
+            
+            # Add all predictions as concepts
+            for pred in predictions:
+                response_data['outputs'][0]['data']['concepts'].append({
+                    'name': pred['name'],
+                    'value': pred['value'],
+                    'nutrition': nutrition_data if pred == predictions[0] else None,
+                    'gemini_advice': gemini_advice if pred == predictions[0] else None
+                })
 
             return jsonify(response_data), 200
 
