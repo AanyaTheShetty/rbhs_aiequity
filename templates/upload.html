@@ -462,13 +462,8 @@
   transform: translateX(100%);
 }
 
-/* Style for checked toggle */
-input[name="analysis_mode"]:checked + span {
-  color: white !important;
-}
-
-input[name="analysis_mode"]:checked ~ i {
-  color: white !important;
+.mode-toggle input[type="radio"]:checked + span {
+  color: white;
 }
 
 .mode-toggle:hover {
