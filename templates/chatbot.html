@@ -577,7 +577,8 @@
 
       const data = await response.json();
 
-      if (data.success) {
+      // Check if the HTTP response was successful (status 200-299)
+      if (response.ok && data.success) {
         // Add bot response
         addMessage(data.response, false);
         
@@ -587,11 +588,24 @@
           content: data.response
         });
       } else {
-        addMessage('I apologize, but I encountered an error. Please try again.', false);
+        // Show specific error message from server
+        const errorMessage = data.error || 'I apologize, but I encountered an error. Please try again.';
+        addMessage(errorMessage, false);
       }
     } catch (error) {
       console.error('Chatbot error:', error);
-      addMessage('I apologize, but I\'m having trouble connecting right now. Please try again in a moment.', false);
+      
+      // Provide helpful error message based on error type
+      let errorMessage;
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        errorMessage = 'Unable to connect to the chatbot service. Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'The request took too long. Please try again with a shorter message.';
+      } else {
+        errorMessage = 'I\'m having trouble connecting right now. Please try again in a moment.';
+      }
+      
+      addMessage(errorMessage, false);
     } finally {
       // Hide loading
       chatbotLoading.style.display = 'none';

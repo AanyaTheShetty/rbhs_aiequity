@@ -454,6 +454,42 @@
   font-weight: 500;
 }
 
+.mode-toggle {
+  position: relative;
+}
+
+.mode-toggle input[type="radio"]:checked ~ .toggle-slider {
+  transform: translateX(100%);
+}
+
+.mode-toggle input[type="radio"]:checked + span {
+  color: white;
+}
+
+.mode-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.toggle-container:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.toggle-container.multi-active .toggle-slider {
+  transform: translateX(100%);
+}
+
+@media (max-width: 768px) {
+  .toggle-container {
+    transform: scale(0.9);
+  }
+
+  .mode-toggle {
+    padding: 12px 20px !important;
+    font-size: 0.9rem;
+  }
+}
+
 @media (max-width: 1300px) {
   .main-grid {
     grid-template-columns: 1fr;
@@ -502,7 +538,24 @@
     <i data-lucide="utensils" class="page-header-icon"></i>
     <span>Upload Food</span>
   </div>
-  
+
+  <!-- Mode Toggle -->
+  <div style="display: flex; justify-content: center; margin: 20px 0; position: relative; z-index: 1;">
+    <div class="toggle-container" style="background: white; border-radius: 25px; padding: 4px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 2px solid #e2e8f0; display: flex; position: relative; overflow: hidden;">
+      <div class="toggle-slider" style="position: absolute; top: 4px; left: 4px; width: calc(50% - 4px); height: calc(100% - 8px); background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); border-radius: 21px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);"></div>
+      <label class="mode-toggle single-toggle" style="padding: 14px 28px; border-radius: 21px; cursor: pointer; transition: all 0.3s ease; font-weight: 700; color: #475569; background: transparent; position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+        <input type="radio" name="analysis_mode" value="single" checked style="display: none;">
+        <i data-lucide="package" style="width: 18px; height: 18px;"></i>
+        <span>Single Item</span>
+      </label>
+      <label class="mode-toggle multi-toggle" style="padding: 14px 28px; border-radius: 21px; cursor: pointer; transition: all 0.3s ease; font-weight: 700; color: #475569; background: transparent; position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+        <input type="radio" name="analysis_mode" value="multi" style="display: none;">
+        <i data-lucide="layers" style="width: 18px; height: 18px;"></i>
+        <span>Multi Item</span>
+      </label>
+    </div>
+  </div>
+
   <div class="main-grid">
     <!-- Nutritional Needs Panel -->
     <div class="side-panel">
@@ -582,6 +635,31 @@
 <script>
 // Initialize Lucide icons
 lucide.createIcons();
+
+// Initialize toggle functionality
+function initializeToggle() {
+  const toggleInputs = document.querySelectorAll('input[name="analysis_mode"]');
+  const toggleContainer = document.querySelector('.toggle-container');
+
+  toggleInputs.forEach(input => {
+    input.addEventListener('change', function() {
+      // Update visual state
+      if (this.value === 'multi') {
+        toggleContainer.classList.add('multi-active');
+      } else {
+        toggleContainer.classList.remove('multi-active');
+      }
+    });
+  });
+
+  // Set initial state
+  const checkedInput = document.querySelector('input[name="analysis_mode"]:checked');
+  if (checkedInput && checkedInput.value === 'multi') {
+    toggleContainer.classList.add('multi-active');
+  }
+}
+
+initializeToggle();
 
 const uploadBtn = document.getElementById("upload-btn");
 const captureBtn = document.getElementById("capture-btn");
@@ -753,9 +831,13 @@ async function identifyFood(imageFile) {
     console.log('Selected nutritional needs:', selectedNeeds);
     console.log('Image file:', imageFile.name, 'Size:', imageFile.size, 'Type:', imageFile.type);
     
+    // Get selected analysis mode
+    const selectedMode = document.querySelector('input[name="analysis_mode"]:checked').value;
+
     const formData = new FormData();
     formData.append("image", imageFile);
     formData.append("nutritional_needs", JSON.stringify(selectedNeeds));
+    formData.append("analysis_mode", selectedMode);
 
     const response = await fetch('/upload', {
         method: 'POST',
@@ -798,53 +880,105 @@ async function identifyFood(imageFile) {
       showError('No food detected in the image. Please try another image with clearer food items.');
       return;
     }
-    
+
     console.log('Food concepts found:', concepts);
-    
-    // Only show the TOP result (index 0)
-    const topConcept = concepts[0];
-    const foodName = topConcept.name;
-    const confidence = Math.round(topConcept.value * 100);
-    
-    console.log(`Processing top concept: ${foodName}`);
-    console.log(`Has gemini_advice:`, !!topConcept.gemini_advice);
-    if (topConcept.gemini_advice) {
-      console.log(`Gemini advice: ${topConcept.gemini_advice.substring(0, 50)}...`);
-    }
-    
-    // Use real nutrition data if available
-    let nutritionData;
-    if (topConcept.nutrition && typeof topConcept.nutrition === 'object') {
-      const n = topConcept.nutrition;
-      nutritionData = {
-        calories: Math.round(n.calories || 0),
-        protein: `${Math.round(n.protein_g || 0)}g`,
-        carbs: `${Math.round(n.carbohydrates_total_g || 0)}g`,
-        fat: `${Math.round(n.fat_total_g || 0)}g`,
-        fiber: `${Math.round(n.fiber_g || 0)}g`,
-        sodium: `${Math.round(n.sodium_mg || 0)}mg`,
-        sugar: `${Math.round(n.sugar_g || 0)}g`,
-        servingSize: `${Math.round(n.serving_size_g || 100)}g`,
-        tags: generateTags(n),
-        hasRealData: true
-      };
+
+    // Check if multi mode (more than 1 concept with nutrition data)
+    const isMultiMode = concepts.length > 1 && concepts.some(c => c.nutrition);
+
+    if (isMultiMode) {
+      // Multi item mode - display top 5 ingredients
+      const foods = [];
+      const numToShow = Math.min(5, concepts.length);
+
+      for (let i = 0; i < numToShow; i++) {
+        const concept = concepts[i];
+        const foodName = concept.name;
+        const confidence = Math.round(concept.value * 100);
+
+        console.log(`Processing concept ${i+1}: ${foodName}`);
+
+        // Use real nutrition data if available for this concept
+        let nutritionData;
+        if (concept.nutrition && typeof concept.nutrition === 'object') {
+          const n = concept.nutrition;
+          nutritionData = {
+            calories: Math.round(n.calories || 0),
+            protein: `${Math.round(n.protein_g || 0)}g`,
+            carbs: `${Math.round(n.carbohydrates_total_g || 0)}g`,
+            fat: `${Math.round(n.fat_total_g || 0)}g`,
+            fiber: `${Math.round(n.fiber_g || 0)}g`,
+            sodium: `${Math.round(n.sodium_mg || 0)}mg`,
+            sugar: `${Math.round(n.sugar_g || 0)}g`,
+            servingSize: `${Math.round(n.serving_size_g || 100)}g`,
+            tags: generateTags(n),
+            hasRealData: true
+          };
+        } else {
+          // Fallback to estimates
+          nutritionData = estimateNutrition(foodName);
+          nutritionData.hasRealData = false;
+        }
+
+        const food = {
+          name: foodName.charAt(0).toUpperCase() + foodName.slice(1),
+          confidence: confidence,
+          category: 'Ingredient',
+          geminiAdvice: (i === 0) ? (concept.gemini_advice || null) : null, // Only show advice for top ingredient
+          ...nutritionData
+        };
+
+        foods.push(food);
+      }
+
+      console.log('Final foods array:', foods);
+      displayMultiFoodResults(foods);
+
     } else {
-      // Fallback to estimates
-      nutritionData = estimateNutrition(foodName);
-      nutritionData.hasRealData = false;
+      // Single item mode - only show the top result
+      const topConcept = concepts[0];
+      const foodName = topConcept.name;
+      const confidence = Math.round(topConcept.value * 100);
+
+      console.log(`Processing top concept: ${foodName}`);
+      console.log(`Has gemini_advice:`, !!topConcept.gemini_advice);
+      if (topConcept.gemini_advice) {
+        console.log(`Gemini advice: ${topConcept.gemini_advice.substring(0, 50)}...`);
+      }
+
+      // Use real nutrition data if available
+      let nutritionData;
+      if (topConcept.nutrition && typeof topConcept.nutrition === 'object') {
+        const n = topConcept.nutrition;
+        nutritionData = {
+          calories: Math.round(n.calories || 0),
+          protein: `${Math.round(n.protein_g || 0)}g`,
+          carbs: `${Math.round(n.carbohydrates_total_g || 0)}g`,
+          fat: `${Math.round(n.fat_total_g || 0)}g`,
+          fiber: `${Math.round(n.fiber_g || 0)}g`,
+          sodium: `${Math.round(n.sodium_mg || 0)}mg`,
+          sugar: `${Math.round(n.sugar_g || 0)}g`,
+          servingSize: `${Math.round(n.serving_size_g || 100)}g`,
+          tags: generateTags(n),
+          hasRealData: true
+        };
+      } else {
+        // Fallback to estimates
+        nutritionData = estimateNutrition(foodName);
+        nutritionData.hasRealData = false;
+      }
+
+      const food = {
+        name: foodName.charAt(0).toUpperCase() + foodName.slice(1),
+        confidence: confidence,
+        category: 'Food',
+        geminiAdvice: topConcept.gemini_advice || null,
+        ...nutritionData
+      };
+
+      console.log('Final food object:', food);
+      displayFoodResult(food);
     }
-    
-    const food = {
-      name: foodName.charAt(0).toUpperCase() + foodName.slice(1),
-      confidence: confidence,
-      category: 'Food',
-      geminiAdvice: topConcept.gemini_advice || null,
-      ...nutritionData
-    };
-    
-    console.log('Final food object:', food);
-    
-    displayFoodResult(food);
     
   } catch (error) {
     console.error('Food identification error:', error);
@@ -871,6 +1005,179 @@ function generateTags(nutrition) {
   if (fiber > 5) tags.push('High Fiber');
   
   return tags;
+}
+
+function displayMultiFoodResults(foods) {
+  if (!foods || foods.length === 0) {
+    showError('No food detected in the image. Please try another image.');
+    return;
+  }
+
+  console.log('Displaying multi food results:', foods);
+
+  let html = `<h3 style="text-align: center; color: #0f172a; margin-bottom: 20px; font-weight: 800;">Detected Ingredients</h3>`;
+
+  // Show the clickable ingredient list
+  html += `<div style="margin-bottom: 20px;">`;
+  html += `<h4 style="text-align: center; color: #374151; font-weight: 700; margin-bottom: 16px;">Click on an ingredient to view details</h4>`;
+
+  foods.forEach((food, index) => {
+    const isTopIngredient = index === 0;
+    const backgroundColor = isTopIngredient ? '#dbeafe' : '#f9fafb';
+    const borderColor = isTopIngredient ? '#3b82f6' : '#d1d5db';
+
+    html += `
+      <div class="ingredient-item" data-index="${index}" style="padding: 16px; margin-bottom: 12px; background: ${backgroundColor}; border: 2px solid ${borderColor}; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 1.25rem; font-weight: 800; color: #1f2937;">${food.name}</div>
+          <span class="confidence-badge" style="font-size: 0.75rem;">${food.confidence}%</span>
+          ${isTopIngredient ? '<span style="font-size: 0.7rem; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #15803d; padding: 4px 8px; border-radius: 8px; font-weight: 700;">Primary</span>' : ''}
+        </div>
+        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #6b7280; transition: transform 0.3s ease;"></i>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+
+  // Container for detailed view
+  html += `<div id="ingredient-details" style="display: none;"></div>`;
+
+  resultsContent.innerHTML = html;
+  lucide.createIcons();
+
+  // Add click handlers for ingredient items
+  document.querySelectorAll('.ingredient-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const index = parseInt(this.dataset.index);
+      showIngredientDetails(foods[index], index, foods);
+    });
+  });
+
+  // Initialize override functionality for each ingredient
+  initializeMultiOverride(foods);
+
+  // Update info banner with AI advice for multi mode
+  const topFood = foods[0];
+  updateInfoBannerForMulti(topFood);
+}
+
+function showIngredientDetails(food, index, allFoods) {
+  const detailsContainer = document.getElementById('ingredient-details');
+  const isTopIngredient = index === 0;
+
+  let html = `
+    <div class="food-result" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid #3b82f6;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div class="food-name" style="margin-bottom: 0;">
+          <span>${food.name}</span>
+          <span class="confidence-badge">${food.confidence}%</span>
+          ${food.hasRealData ? '<span style="font-size: 0.7rem; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; padding: 4px 8px; border-radius: 8px; font-weight: 700; margin-left: 4px;">Verified Data</span>' : ''}
+          ${isTopIngredient ? '<span style="font-size: 0.7rem; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #15803d; padding: 4px 8px; border-radius: 8px; font-weight: 700; margin-left: 4px;">Primary</span>' : ''}
+        </div>
+        <button id="back-to-list" style="padding: 8px 16px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+          Back to List
+        </button>
+      </div>
+
+      <div class="food-info">
+        <strong>Category:</strong> ${food.category || 'Ingredient'}
+      </div>
+
+      ${food.servingSize ? `
+        <div class="food-info" style="margin-top: 8px;">
+          <strong>Serving Size:</strong> ${food.servingSize}
+        </div>
+      ` : ''}
+
+      ${food.calories ? `
+        <div class="nutrition-grid">
+          <div class="nutrition-item">
+            <div class="nutrition-label">Calories</div>
+            <div class="nutrition-value">${food.calories}</div>
+          </div>
+          <div class="nutrition-item">
+            <div class="nutrition-label">Protein</div>
+            <div class="nutrition-value">${food.protein || 'N/A'}</div>
+          </div>
+          <div class="nutrition-item">
+            <div class="nutrition-label">Carbs</div>
+            <div class="nutrition-value">${food.carbs || 'N/A'}</div>
+          </div>
+          <div class="nutrition-item">
+            <div class="nutrition-label">Fat</div>
+            <div class="nutrition-value">${food.fat || 'N/A'}</div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${food.fiber ? `
+        <div style="margin-top: 12px; padding: 10px; background: white; border-radius: 10px; border: 2px solid #e2e8f0;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+            <div>
+              <div class="nutrition-label">Fiber</div>
+              <div style="font-weight: 700; color: #0f172a;">${food.fiber}</div>
+            </div>
+            <div>
+              <div class="nutrition-label">Sodium</div>
+              <div style="font-weight: 700; color: #0f172a;">${food.sodium}</div>
+            </div>
+            <div>
+              <div class="nutrition-label">Sugar</div>
+              <div style="font-weight: 700; color: #0f172a;">${food.sugar}</div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${food.tags && food.tags.length > 0 ? `
+        <div class="food-info" style="margin-top: 12px;">
+          <strong>Tags:</strong> ${food.tags.join(', ')}
+        </div>
+      ` : ''}
+
+      <button class="override-btn" data-food-index="${index}" style="margin-top: 16px; width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease;">
+        <i data-lucide="edit-3" style="width: 18px; height: 18px;"></i>
+        <span>Override Detection</span>
+      </button>
+
+      <div class="override-section" data-food-index="${index}" style="display: none; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 2px solid #e2e8f0;">
+        <div style="margin-bottom: 12px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="search" style="width: 18px; height: 18px; color: #8b5cf6;"></i>
+          <span>Select Different Ingredient</span>
+        </div>
+        <input type="text" class="food-search" data-food-index="${index}" placeholder="Search for an ingredient..." style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.9375rem; margin-bottom: 8px; font-family: inherit;">
+        <div class="food-dropdown" data-food-index="${index}" style="max-height: 200px; overflow-y: auto; background: white; border: 2px solid #e2e8f0; border-radius: 8px; display: none;">
+          <!-- Dropdown items will be inserted here -->
+        </div>
+        <button class="cancel-override-btn" data-food-index="${index}" style="margin-top: 8px; width: 100%; padding: 8px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  `;
+
+  detailsContainer.innerHTML = html;
+  detailsContainer.style.display = 'block';
+
+  // Hide the ingredient list
+  document.querySelectorAll('.ingredient-item').forEach(item => {
+    item.style.display = 'none';
+  });
+
+  // Add back button handler
+  document.getElementById('back-to-list').addEventListener('click', function() {
+    detailsContainer.style.display = 'none';
+    document.querySelectorAll('.ingredient-item').forEach(item => {
+      item.style.display = 'flex';
+    });
+  });
+
+  lucide.createIcons();
+
+  // Initialize override for this specific ingredient
+  setupOverrideButtonForIndex(index);
 }
 
 function displayFoodResult(food) {
@@ -1059,7 +1366,7 @@ function estimateNutrition(foodName) {
 function updateInfoBanner(food) {
   const infoBanner = document.querySelector('.info-banner');
   if (!infoBanner || !food) return;
-  
+
   // Display AI advice in the banner if available
   if (food.geminiAdvice) {
     infoBanner.innerHTML = `
@@ -1080,19 +1387,19 @@ function updateInfoBanner(food) {
     lucide.createIcons();
     return;
   }
-  
+
   // Fallback to nutritional compatibility message
   const selectedNeeds = Array.from(document.querySelectorAll('input[name="need"]:checked'))
     .map(cb => cb.value);
-  
+
   if (selectedNeeds.length === 0) {
     infoBanner.textContent = `Based on the analysis, this is ${food.name} with approximately ${food.calories || 'unknown'} calories.`;
     return;
   }
-  
+
   const matches = [];
   const mismatches = [];
-  
+
   selectedNeeds.forEach(need => {
     if (food.tags && food.tags.some(tag => tag.toLowerCase().includes(need.toLowerCase()))) {
       matches.push(need);
@@ -1100,7 +1407,7 @@ function updateInfoBanner(food) {
       mismatches.push(need);
     }
   });
-  
+
   let message = '';
   if (matches.length > 0 && mismatches.length === 0) {
     message = `✓ Great choice! This ${food.name} aligns perfectly with your nutritional goals: ${matches.join(', ')}.`;
@@ -1109,8 +1416,37 @@ function updateInfoBanner(food) {
   } else {
     message = `⚠️ Note: This ${food.name} may not align with your selected nutritional needs: ${mismatches.join(', ')}.`;
   }
-  
+
   infoBanner.textContent = message;
+}
+
+function updateInfoBannerForMulti(food) {
+  const infoBanner = document.querySelector('.info-banner');
+  if (!infoBanner || !food) return;
+
+  // Display AI advice in the banner for multi-item analysis
+  if (food.geminiAdvice) {
+    infoBanner.innerHTML = `
+      <div style="display: flex; align-items: start; gap: 16px; text-align: left;">
+        <div style="flex-shrink: 0; width: 48px; height: 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="sparkles" style="width: 24px; height: 24px; color: white;"></i>
+        </div>
+        <div style="flex: 1;">
+          <h3 style="color: #065f46; font-size: 1.125rem; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.02em;">
+            AI Health Insight for Meal Analysis
+          </h3>
+          <p style="color: #064e3b; font-size: 1rem; line-height: 1.7; margin: 0;">
+            ${food.geminiAdvice}
+          </p>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  // Fallback message for multi mode
+  infoBanner.textContent = `Meal analysis complete. Click on individual ingredients above to view detailed nutrition information.`;
 }
 
 // Initialize
@@ -1283,6 +1619,148 @@ async function overrideWithFood(foodName) {
 // Call after displaying food results
 function initializeOverride() {
   setupOverrideButton();
+}
+
+function initializeMultiOverride(foods) {
+  foods.forEach((food, index) => {
+    setupOverrideButtonForIndex(index);
+  });
+}
+
+function setupOverrideButtonForIndex(index) {
+  const overrideBtn = document.querySelector(`.override-btn[data-food-index="${index}"]`);
+  const overrideSection = document.querySelector(`.override-section[data-food-index="${index}"]`);
+  const cancelBtn = document.querySelector(`.cancel-override-btn[data-food-index="${index}"]`);
+  const foodSearch = document.querySelector(`.food-search[data-food-index="${index}"]`);
+  const foodDropdown = document.querySelector(`.food-dropdown[data-food-index="${index}"]`);
+
+  if (!overrideBtn) return;
+
+  overrideBtn.addEventListener('click', () => {
+    overrideSection.style.display = 'block';
+    overrideBtn.style.display = 'none';
+    foodSearch.focus();
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    overrideSection.style.display = 'none';
+    overrideBtn.style.display = 'flex';
+    foodSearch.value = '';
+    foodDropdown.style.display = 'none';
+    foodDropdown.innerHTML = '';
+  });
+
+  // Search functionality
+  foodSearch.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase().trim();
+
+    if (searchTerm.length === 0) {
+      foodDropdown.style.display = 'none';
+      foodDropdown.innerHTML = '';
+      return;
+    }
+
+    const filtered = availableFoods.filter(food =>
+      food.toLowerCase().includes(searchTerm)
+    ).slice(0, 20); // Limit to 20 results
+
+    if (filtered.length === 0) {
+      foodDropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; text-align: center;">No matching foods found</div>';
+      foodDropdown.style.display = 'block';
+      return;
+    }
+
+    foodDropdown.innerHTML = filtered.map(food => `
+      <div class="food-dropdown-item" data-food="${food}" data-index="${index}" style="padding: 10px 12px; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9;">
+        ${food.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+      </div>
+    `).join('');
+
+    foodDropdown.style.display = 'block';
+
+    // Add hover effects
+    const items = foodDropdown.querySelectorAll('.food-dropdown-item');
+    items.forEach(item => {
+      item.addEventListener('mouseenter', function() {
+        this.style.background = '#f8fafc';
+        this.style.color = '#8b5cf6';
+        this.style.fontWeight = '700';
+      });
+
+      item.addEventListener('mouseleave', function() {
+        this.style.background = 'white';
+        this.style.color = '#0f172a';
+        this.style.fontWeight = '600';
+      });
+
+      item.addEventListener('click', function() {
+        const selectedFood = this.dataset.food;
+        const foodIndex = parseInt(this.dataset.index);
+        overrideWithFoodForIndex(selectedFood, foodIndex);
+      });
+    });
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!foodSearch.contains(e.target) && !foodDropdown.contains(e.target)) {
+      foodDropdown.style.display = 'none';
+    }
+  });
+}
+
+async function overrideWithFoodForIndex(foodName, index) {
+  console.log(`Overriding ingredient ${index} with: ${foodName}`);
+
+  // Show loading state
+  showLoading();
+
+  try {
+    // Get selected nutritional needs
+    const selectedNeeds = Array.from(document.querySelectorAll('input[name="need"]:checked'))
+      .map(cb => cb.value);
+
+    const response = await fetch('/api/override-food', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        food_name: foodName,
+        nutritional_needs: selectedNeeds
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to override food');
+    }
+
+    if (!data.success || !data.food) {
+      throw new Error('Invalid response from server');
+    }
+
+    // For simplicity, refresh the entire analysis instead of updating just one ingredient
+    // In a more complex implementation, you could update just the specific ingredient
+    // But for now, we'll re-run the analysis with the new mode
+    const selectedMode = document.querySelector('input[name="analysis_mode"]:checked').value;
+    const currentImageData = document.querySelector('#uploaded-image').src || document.querySelector('#snapshot').src;
+
+    if (currentImageData && currentImageData.startsWith('data:')) {
+      // Convert data URL to blob and re-analyze
+      const response = await fetch(currentImageData);
+      const blob = await response.blob();
+      const file = new File([blob], "reanalysis.jpg", { type: "image/jpeg" });
+      identifyFood(file);
+    } else {
+      showError('Unable to re-analyze. Please upload the image again.');
+    }
+
+  } catch (error) {
+    console.error('Override error:', error);
+    showError(`Failed to override: ${error.message}`);
+  }
 }
 
 // Load food list on page load
