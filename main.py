@@ -37,8 +37,8 @@ app = Flask(__name__)
 app.secret_key = "password" 
 
 # Set up API keys
-GOOGLE_API_KEY = "AIzaSyDt5slDeRiG0lF_c1Xp8JfToLbGjTW1DSQ"
-CALORIENINJA_API_KEY = "7XqGiBmqtiTKw//x4kXVVA==TaNz43s9IAIBUX4M"
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+CALORIENINJA_API_KEY = os.environ.get("CALORIENINJA_API_KEY")
 
 # Configure Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
