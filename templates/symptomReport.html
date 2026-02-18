@@ -717,6 +717,138 @@
         </select>
       </div>
     </div>
+
+    <div class="form-section">
+      <label class="form-label">Do you have a headache?</label>
+      <div class="yn-grid" id="headache-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="headache-severity" class="severity-select">
+        <label for="headache_severity">Severity:</label>
+        <select name="headache_severity" id="headache_severity">
+          <option value="Mild">Mild</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Severe">Severe</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">Are you feeling dizzy or lightheaded?</label>
+      <div class="yn-grid" id="dizziness-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="dizziness-severity" class="severity-select">
+        <label for="dizziness_severity">Severity:</label>
+        <select name="dizziness_severity" id="dizziness_severity">
+          <option value="Mild">Mild</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Severe">Severe</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">Do you have nausea?</label>
+      <div class="yn-grid" id="nausea-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="nausea-severity" class="severity-select">
+        <label for="nausea_severity">Severity:</label>
+        <select name="nausea_severity" id="nausea_severity">
+          <option value="Mild">Mild</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Severe">Severe</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">Are you very thirsty?</label>
+      <div class="yn-grid" id="thirst-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="thirst-severity" class="severity-select">
+        <label for="thirst_severity">Severity:</label>
+        <select name="thirst_severity" id="thirst_severity">
+          <option value="Mild">Mild</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Severe">Severe</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">Are you urinating more often than usual?</label>
+      <div class="yn-grid" id="urination-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="urination-severity" class="severity-select">
+        <label for="urination_severity">Severity:</label>
+        <select name="urination_severity" id="urination_severity">
+          <option value="Mild">Mild</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Severe">Severe</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">Do you have blurry vision?</label>
+      <div class="yn-grid" id="blurredVision-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="blurredVision-severity" class="severity-select">
+        <label for="blurredVision_severity">Severity:</label>
+        <select name="blurredVision_severity" id="blurredVision_severity">
+          <option value="Mild">Mild</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Severe">Severe</option>
+        </select>
+      </div>
+    </div>
     
     <div class="form-section">
       <label class="form-label">Other symptoms</label>
@@ -760,6 +892,18 @@
 <script>
 // Initialize Lucide icons
 lucide.createIcons();
+
+const trackedSymptoms = [
+  { key: 'fever', label: 'Fever' },
+  { key: 'cough', label: 'Cough' },
+  { key: 'fatigue', label: 'Fatigue' },
+  { key: 'headache', label: 'Headache' },
+  { key: 'dizziness', label: 'Dizziness/Lightheadedness' },
+  { key: 'nausea', label: 'Nausea' },
+  { key: 'thirst', label: 'Excessive Thirst' },
+  { key: 'urination', label: 'Frequent Urination' },
+  { key: 'blurredVision', label: 'Blurry Vision' }
+];
 
 document.querySelectorAll('.emoji-btn').forEach(btn => 
   btn.addEventListener('click', function() {
@@ -810,32 +954,22 @@ document.getElementById('symptomForm').addEventListener('submit', function(e) {
   
   const data = {
     feeling: feeling,
-    fever: null,
-    feverSeverity: null,
-    cough: null,
-    coughSeverity: null,
-    fatigue: null,
-    fatigueSeverity: null,
     other: document.getElementById('other').value.trim()
   };
-  
-  const feverBtn = document.querySelector('#fever-row .yn-btn.selected');
-  if (feverBtn) {
-    data.fever = feverBtn.getAttribute('data-value');
-    if (data.fever === 'Yes') data.feverSeverity = document.getElementById('fever_severity').value;
-  }
-  
-  const coughBtn = document.querySelector('#cough-row .yn-btn.selected');
-  if (coughBtn) {
-    data.cough = coughBtn.getAttribute('data-value');
-    if (data.cough === 'Yes') data.coughSeverity = document.getElementById('cough_severity').value;
-  }
-  
-  const fatigueBtn = document.querySelector('#fatigue-row .yn-btn.selected');
-  if (fatigueBtn) {
-    data.fatigue = fatigueBtn.getAttribute('data-value');
-    if (data.fatigue === 'Yes') data.fatigueSeverity = document.getElementById('fatigue_severity').value;
-  }
+
+  trackedSymptoms.forEach(symptom => {
+    const selectedBtn = document.querySelector(`#${symptom.key}-row .yn-btn.selected`);
+    data[symptom.key] = null;
+    data[`${symptom.key}Severity`] = null;
+
+    if (selectedBtn) {
+      data[symptom.key] = selectedBtn.getAttribute('data-value');
+      if (data[symptom.key] === 'Yes') {
+        const severityInput = document.getElementById(`${symptom.key}_severity`);
+        data[`${symptom.key}Severity`] = severityInput ? severityInput.value : 'Mild';
+      }
+    }
+  });
   
   saveSymptoms(data);
   
@@ -865,9 +999,11 @@ function openHistoryModal() {
       html += `<div class="history-item">`;
       html += `<div class="history-date">${formatDate(date)}</div>`;
       if (d.feeling) html += `<div class="history-detail"><strong>Overall Feeling:</strong> ${d.feeling}</div>`;
-      if (d.fever) html += `<div class="history-detail"><strong>Fever:</strong> ${d.fever === 'Yes' ? d.feverSeverity : 'None'}</div>`;
-      if (d.cough) html += `<div class="history-detail"><strong>Cough:</strong> ${d.cough === 'Yes' ? d.coughSeverity : 'None'}</div>`;
-      if (d.fatigue) html += `<div class="history-detail"><strong>Fatigue:</strong> ${d.fatigue === 'Yes' ? d.fatigueSeverity : 'None'}</div>`;
+      trackedSymptoms.forEach(symptom => {
+        if (d[symptom.key]) {
+          html += `<div class="history-detail"><strong>${symptom.label}:</strong> ${d[symptom.key] === 'Yes' ? d[`${symptom.key}Severity`] : 'None'}</div>`;
+        }
+      });
       if (d.other) html += `<div class="history-detail"><strong>Other:</strong> ${d.other}</div>`;
       html += `</div>`;
     });
@@ -901,9 +1037,12 @@ function exportToPDF() {
       y += 10;
       doc.setFontSize(11);
       if (d.feeling) { doc.text(`Overall Feeling: ${d.feeling}`, 25, y); y += 7; }
-      if (d.fever) { doc.text(`Fever: ${d.fever === 'Yes' ? d.feverSeverity : 'None'}`, 25, y); y += 7; }
-      if (d.cough) { doc.text(`Cough: ${d.cough === 'Yes' ? d.coughSeverity : 'None'}`, 25, y); y += 7; }
-      if (d.fatigue) { doc.text(`Fatigue: ${d.fatigue === 'Yes' ? d.fatigueSeverity : 'None'}`, 25, y); y += 7; }
+      trackedSymptoms.forEach(symptom => {
+        if (d[symptom.key]) {
+          doc.text(`${symptom.label}: ${d[symptom.key] === 'Yes' ? d[`${symptom.key}Severity`] : 'None'}`, 25, y);
+          y += 7;
+        }
+      });
       if (d.other) { doc.text(`Other: ${d.other}`, 25, y); y += 7; }
       y += 5;
       if (y > 270) {

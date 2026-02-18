@@ -558,6 +558,30 @@
 
         <div class="form-row">
           <div class="form-section">
+            <label class="form-label">Treatment Used</label>
+            <select id="treatmentMode" class="form-select" required>
+              <option value="insulin">Insulin</option>
+              <option value="pills">Pills / Oral medication</option>
+              <option value="both">Both insulin and pills</option>
+              <option value="none">No diabetes medication for this entry</option>
+            </select>
+          </div>
+
+          <div class="form-section">
+            <label class="form-label">Pill Type (if used)</label>
+            <select id="oralMedicationType" class="form-select">
+              <option value="">Not applicable</option>
+              <option value="metformin">Metformin</option>
+              <option value="sulfonylurea">Sulfonylurea (e.g., Glipizide/Glimepiride)</option>
+              <option value="dpp4">DPP-4 inhibitor (e.g., Januvia)</option>
+              <option value="sglt2">SGLT2 inhibitor (e.g., Jardiance/Farxiga)</option>
+              <option value="other">Other oral diabetes medicine</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="insulinFields" class="form-row">
+          <div class="form-section">
             <label class="form-label">Insulin Dose (units)</label>
             <input type="number" id="insulinDose" class="form-input" placeholder="e.g., 10" min="0" step="0.5" required>
           </div>
@@ -726,6 +750,7 @@ lucide.createIcons();
 const now = new Date();
 document.getElementById('logDate').valueAsDate = now;
 document.getElementById('logTime').value = now.toTimeString().slice(0, 5);
+updateMedicationInputs();
 
 // Generate unique ID
 function generateId() {
@@ -789,6 +814,61 @@ function getInsulinParams(type) {
   };
   return params[type] || params.rapid;
 }
+
+function usesInsulin(treatmentMode) {
+  return treatmentMode === 'insulin' || treatmentMode === 'both';
+}
+
+function usesPills(treatmentMode) {
+  return treatmentMode === 'pills' || treatmentMode === 'both';
+}
+
+function formatMedicationType(type) {
+  const labels = {
+    metformin: 'Metformin',
+    sulfonylurea: 'Sulfonylurea',
+    dpp4: 'DPP-4 inhibitor',
+    sglt2: 'SGLT2 inhibitor',
+    other: 'Other oral medication'
+  };
+  return labels[type] || type;
+}
+
+function formatTreatmentMode(mode) {
+  const labels = {
+    insulin: 'Insulin',
+    pills: 'Pills',
+    both: 'Insulin + Pills',
+    none: 'No Medication'
+  };
+  return labels[mode] || mode;
+}
+
+function updateMedicationInputs() {
+  const treatmentMode = document.getElementById('treatmentMode').value;
+  const insulinFields = document.getElementById('insulinFields');
+  const insulinDoseInput = document.getElementById('insulinDose');
+  const insulinTypeInput = document.getElementById('insulinType');
+  const oralMedicationTypeInput = document.getElementById('oralMedicationType');
+
+  const insulinEnabled = usesInsulin(treatmentMode);
+  insulinFields.style.display = insulinEnabled ? 'grid' : 'none';
+  insulinDoseInput.required = insulinEnabled;
+  insulinTypeInput.required = insulinEnabled;
+  if (!insulinEnabled) {
+    insulinDoseInput.value = '';
+    insulinTypeInput.value = '';
+  }
+
+  const pillsEnabled = usesPills(treatmentMode);
+  oralMedicationTypeInput.disabled = !pillsEnabled;
+  oralMedicationTypeInput.required = pillsEnabled;
+  if (!pillsEnabled) {
+    oralMedicationTypeInput.value = '';
+  }
+}
+
+document.getElementById('treatmentMode').addEventListener('change', updateMedicationInputs);
 
 // Calculate insulin activity
 function calculateInsulinActivity(hours, params) {
@@ -955,6 +1035,25 @@ function calculateFactorImpacts(factors) {
   if (factors.includes('alcohol')) totalImpact -= 15; // Alcohol can lower glucose (delayed)
   
   return totalImpact;
+}
+
+function calculateOralMedicationImpact(type, hours) {
+  if (!type) return 0;
+
+  const medicationEffects = {
+    metformin: { maxDrop: 18, onset: 1.5, duration: 10 },
+    sulfonylurea: { maxDrop: 30, onset: 1.0, duration: 8 },
+    dpp4: { maxDrop: 14, onset: 1.5, duration: 8 },
+    sglt2: { maxDrop: 16, onset: 2.0, duration: 12 },
+    other: { maxDrop: 12, onset: 1.5, duration: 8 }
+  };
+
+  const med = medicationEffects[type];
+  if (!med || hours < med.onset || hours > med.duration) return 0;
+
+  const progress = (hours - med.onset) / (med.duration - med.onset);
+  const decay = 1 - Math.min(1, progress);
+  return med.maxDrop * decay;
 }
 
 // Calculate basal glucose change
@@ -1135,15 +1234,19 @@ function predictGlucose() {
   const hoursElapsed = (now - entryTime) / (1000 * 60 * 60);
   const totalHours = hoursElapsed + hours;
 
-  const params = getInsulinParams(latest.insulinType);
+  const treatmentMode = latest.treatmentMode || 'insulin';
   const currentGlucose = parseFloat(latest.currentGlucose);
-  const insulinDose = parseFloat(latest.insulinDose);
+  const insulinDose = parseFloat(latest.insulinDose || '0');
 
   const isf = calculatePersonalizedISF(profile, currentGlucose);
-
-  const insulinActivity = calculateInsulinActivity(totalHours, params);
-  const maxGlucoseReduction = insulinDose * isf;
-  const glucoseDrop = maxGlucoseReduction * insulinActivity;
+  let glucoseDrop = 0;
+  if (usesInsulin(treatmentMode)) {
+    const params = getInsulinParams(latest.insulinType);
+    const insulinActivity = calculateInsulinActivity(totalHours, params);
+    const maxGlucoseReduction = insulinDose * isf;
+    glucoseDrop = maxGlucoseReduction * insulinActivity;
+  }
+  const oralMedicationImpact = calculateOralMedicationImpact(latest.oralMedicationType, totalHours);
   
   const basalChange = calculateBasalGlucoseChange(hours, profile, currentGlucose);
   
@@ -1164,7 +1267,7 @@ function predictGlucose() {
   const factorImpact = calculateFactorImpacts(latest.factors || []);
   
   // Final prediction with all factors
-  let predictedGlucose = currentGlucose - glucoseDrop + basalChange + carbImpact - activityImpact + factorImpact;
+  let predictedGlucose = currentGlucose - glucoseDrop - oralMedicationImpact + basalChange + carbImpact - activityImpact + factorImpact;
   predictedGlucose = Math.max(40, Math.round(predictedGlucose));
 
   const confidence = calculateConfidence(hoursElapsed, hours, profile, entries, latest);
@@ -1202,7 +1305,12 @@ function predictGlucose() {
   // Build factor breakdown
   let factorBreakdown = '<br><br><strong>Prediction Breakdown:</strong><br>';
   factorBreakdown += `• Starting glucose: ${currentGlucose} mg/dL<br>`;
-  factorBreakdown += `• Insulin effect: -${glucoseDrop.toFixed(0)} mg/dL<br>`;
+  if (usesInsulin(treatmentMode)) {
+    factorBreakdown += `• Insulin effect: -${glucoseDrop.toFixed(0)} mg/dL<br>`;
+  }
+  if (usesPills(treatmentMode) && latest.oralMedicationType) {
+    factorBreakdown += `• Pill effect estimate: -${oralMedicationImpact.toFixed(0)} mg/dL (${formatMedicationType(latest.oralMedicationType)})<br>`;
+  }
   factorBreakdown += `• Basal metabolic change: ${basalChange > 0 ? '+' : ''}${basalChange.toFixed(0)} mg/dL<br>`;
   
   if (carbImpact > 0) {
@@ -1303,7 +1411,14 @@ function displayLogs() {
 
   let html = '';
   entries.forEach(entry => {
-    let details = `Glucose: ${entry.currentGlucose} mg/dL | Insulin: ${entry.insulinDose} units (${entry.insulinType})`;
+    const treatmentMode = entry.treatmentMode || 'insulin';
+    let details = `Glucose: ${entry.currentGlucose} mg/dL | Treatment: ${formatTreatmentMode(treatmentMode)}`;
+    if (usesInsulin(treatmentMode)) {
+      details += ` | Insulin: ${entry.insulinDose} units (${entry.insulinType})`;
+    }
+    if (usesPills(treatmentMode) && entry.oralMedicationType) {
+      details += ` | Pill: ${formatMedicationType(entry.oralMedicationType)}`;
+    }
     
     if (entry.carbsConsumed) {
       details += ` | Carbs: ${entry.carbsConsumed}g`;
@@ -1366,12 +1481,14 @@ document.getElementById('glucoseForm').addEventListener('submit', function(e) {
   e.preventDefault();
   
   const currentGlucose = document.getElementById('currentGlucose').value;
+  const treatmentMode = document.getElementById('treatmentMode').value;
   const insulinDose = document.getElementById('insulinDose').value;
   const insulinType = document.getElementById('insulinType').value;
+  const oralMedicationType = document.getElementById('oralMedicationType').value;
   const logDate = document.getElementById('logDate').value;
   const logTime = document.getElementById('logTime').value;
   
-  if (!currentGlucose || !insulinDose || !insulinType || !logDate || !logTime) {
+  if (!currentGlucose || !treatmentMode || !logDate || !logTime) {
     showAlert('Please fill in all required fields before saving.', 'warning', 'Missing Fields');
     return;
   }
@@ -1382,9 +1499,20 @@ document.getElementById('glucoseForm').addEventListener('submit', function(e) {
     return;
   }
   
-  const doseValue = parseFloat(insulinDose);
-  if (isNaN(doseValue) || doseValue < 0 || doseValue > 100) {
-    showAlert('Please enter a valid insulin dose between 0 and 100 units.', 'error', 'Invalid Insulin Dose');
+  if (usesInsulin(treatmentMode)) {
+    if (!insulinDose || !insulinType) {
+      showAlert('Please add insulin dose and type for insulin entries.', 'warning', 'Missing Insulin Details');
+      return;
+    }
+    const doseValue = parseFloat(insulinDose);
+    if (isNaN(doseValue) || doseValue < 0 || doseValue > 100) {
+      showAlert('Please enter a valid insulin dose between 0 and 100 units.', 'error', 'Invalid Insulin Dose');
+      return;
+    }
+  }
+
+  if (usesPills(treatmentMode) && !oralMedicationType) {
+    showAlert('Please select your pill type for this entry.', 'warning', 'Missing Pill Type');
     return;
   }
   
@@ -1398,8 +1526,10 @@ document.getElementById('glucoseForm').addEventListener('submit', function(e) {
   const entry = {
     id: generateId(),
     currentGlucose: currentGlucose,
-    insulinDose: insulinDose,
-    insulinType: insulinType,
+    treatmentMode: treatmentMode,
+    insulinDose: usesInsulin(treatmentMode) ? insulinDose : '0',
+    insulinType: usesInsulin(treatmentMode) ? insulinType : null,
+    oralMedicationType: usesPills(treatmentMode) ? oralMedicationType : null,
     date: logDate,
     time: logTime,
     carbsConsumed: document.getElementById('carbsConsumed').value || null,
@@ -1417,6 +1547,7 @@ document.getElementById('glucoseForm').addEventListener('submit', function(e) {
   const now = new Date();
   document.getElementById('logDate').valueAsDate = now;
   document.getElementById('logTime').value = now.toTimeString().slice(0, 5);
+  updateMedicationInputs();
   
   displayLogs();
   updateStats();

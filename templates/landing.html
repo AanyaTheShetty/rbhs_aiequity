@@ -555,14 +555,27 @@ function displayTodaysSymptoms() {
     const today = getTodayDate();
     const s = loadSymptoms();
     const contentDiv = document.getElementById('todaysSymptomsContent');
+    const trackedSymptoms = [
+        { key: 'fever', label: 'Fever' },
+        { key: 'cough', label: 'Cough' },
+        { key: 'fatigue', label: 'Fatigue' },
+        { key: 'headache', label: 'Headache' },
+        { key: 'dizziness', label: 'Dizziness/Lightheadedness' },
+        { key: 'nausea', label: 'Nausea' },
+        { key: 'thirst', label: 'Excessive Thirst' },
+        { key: 'urination', label: 'Frequent Urination' },
+        { key: 'blurredVision', label: 'Blurry Vision' }
+    ];
 
     if (s[today]) {
         const dt = s[today];
         let html = '';
         if (dt.feeling) html += `<div class="symptom-item"><div class="item-label">Overall Feeling</div><div class="item-value">${dt.feeling}</div></div>`;
-        if (dt.fever) html += `<div class="symptom-item"><div class="item-label">Fever</div><div class="item-value">${dt.fever === 'Yes' ? dt.feverSeverity : 'None'}</div></div>`;
-        if (dt.cough) html += `<div class="symptom-item"><div class="item-label">Cough</div><div class="item-value">${dt.cough === 'Yes' ? dt.coughSeverity : 'None'}</div></div>`;
-        if (dt.fatigue) html += `<div class="symptom-item"><div class="item-label">Fatigue</div><div class="item-value">${dt.fatigue === 'Yes' ? dt.fatigueSeverity : 'None'}</div></div>`;
+        trackedSymptoms.forEach(symptom => {
+            if (dt[symptom.key]) {
+                html += `<div class="symptom-item"><div class="item-label">${symptom.label}</div><div class="item-value">${dt[symptom.key] === 'Yes' ? dt[`${symptom.key}Severity`] : 'None'}</div></div>`;
+            }
+        });
         if (dt.other) html += `<div class="symptom-item"><div class="item-label">Other</div><div class="item-value">${dt.other}</div></div>`;
         contentDiv.innerHTML = html;
     } else {
