@@ -44,7 +44,7 @@
       <textarea 
         id="chatbot-input" 
         class="chatbot-input" 
-        placeholder="Ask about glucose, nutrition, medicines..."
+        placeholder="Ask about glucose, food, or meds..."
         rows="1"
       ></textarea>
       <button id="chatbot-send" class="chatbot-send-btn" aria-label="Send message">
@@ -195,6 +195,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
+    line-height: 0;
     transition: all 0.2s ease;
   }
 
@@ -308,9 +310,16 @@
     border-radius: 12px;
     font-family: 'Inter', sans-serif;
     font-size: 0.9375rem;
+    line-height: 1.4;
     resize: none;
+    min-height: 44px;
     max-height: 120px;
+    overflow-y: auto;
     transition: all 0.2s ease;
+  }
+
+  .chatbot-input::placeholder {
+    color: #94a3b8;
   }
 
   .chatbot-input:focus {
@@ -421,6 +430,11 @@
     background: #0f172a;
     color: #f8fafc;
     border-color: #334155;
+  }
+
+  html.dark-theme .chatbot-input::placeholder,
+  body.dark-theme .chatbot-input::placeholder {
+    color: #64748b;
   }
 
   html.dark-theme .chatbot-input:focus,

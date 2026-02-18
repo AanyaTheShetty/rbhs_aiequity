@@ -50,6 +50,27 @@
      -moz-osx-font-smoothing: grayscale;
      transition: background-color 0.3s ease, color 0.3s ease;
    }
+
+   input,
+   textarea,
+   select,
+   button {
+     font-family: inherit;
+   }
+
+   input::placeholder,
+   textarea::placeholder {
+     color: #94a3b8;
+   }
+
+   button:focus-visible,
+   a:focus-visible,
+   input:focus-visible,
+   select:focus-visible,
+   textarea:focus-visible {
+     outline: 2px solid #3b82f6;
+     outline-offset: 2px;
+   }
    
    /* Menu Toggle Button */
    .menu-toggle {
@@ -63,10 +84,8 @@
      border-radius: 14px;
      cursor: pointer;
      display: flex;
-     flex-direction: column;
      justify-content: center;
      align-items: center;
-     gap: 5px;
      z-index: 1001;
      box-shadow: 0 8px 24px rgba(30, 64, 175, 0.25), 0 2px 8px rgba(0, 0, 0, 0.1);
      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -82,24 +101,38 @@
    }
    
    .menu-toggle span {
-     width: 26px;
-     height: 3px;
+     position: absolute;
+     width: 24px;
+     height: 2.5px;
      background: white;
      border-radius: 3px;
+     transform-origin: center;
      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   }
+
+   .menu-toggle span:nth-child(1) {
+     transform: translateY(-7px);
+   }
+
+   .menu-toggle span:nth-child(2) {
+     transform: translateY(0);
+   }
+
+   .menu-toggle span:nth-child(3) {
+     transform: translateY(7px);
    }
    
    .menu-toggle.active span:nth-child(1) {
-     transform: rotate(45deg) translate(7px, 7px);
+     transform: translateY(0) rotate(45deg);
    }
    
    .menu-toggle.active span:nth-child(2) {
      opacity: 0;
-     transform: translateX(-10px);
+     transform: scaleX(0);
    }
    
    .menu-toggle.active span:nth-child(3) {
-     transform: rotate(-45deg) translate(7px, -7px);
+     transform: translateY(0) rotate(-45deg);
    }
    
    /* Sidebar Navigation */
@@ -334,6 +367,13 @@
    html.dark-theme .menu-toggle,
    body.dark-theme .menu-toggle {
      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important;
+   }
+
+   html.dark-theme input::placeholder,
+   html.dark-theme textarea::placeholder,
+   body.dark-theme input::placeholder,
+   body.dark-theme textarea::placeholder {
+     color: #64748b !important;
    }
    
    /* Dark theme for page containers */

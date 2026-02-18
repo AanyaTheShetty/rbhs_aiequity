@@ -455,7 +455,54 @@
 }
 
 .mode-toggle {
+  padding: 14px 28px;
+  border-radius: 21px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 700;
+  color: #475569;
+  background: transparent;
   position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-toggle-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.mode-toggle-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.toggle-container {
+  background: white;
+  border-radius: 25px;
+  padding: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e2e8f0;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  border-radius: 21px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
 }
 
 .mode-toggle input[type="radio"]:checked ~ .toggle-slider {
@@ -477,6 +524,34 @@
 
 .toggle-container.multi-active .toggle-slider {
   transform: translateX(100%);
+}
+
+.results-placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.dropdown-empty {
+  padding: 12px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.food-dropdown-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.food-dropdown-item:hover {
+  background: #f8fafc;
+  color: #8b5cf6;
+  font-weight: 700;
 }
 
 @media (max-width: 768px) {
@@ -540,17 +615,17 @@
   </div>
 
   <!-- Mode Toggle -->
-  <div style="display: flex; justify-content: center; margin: 20px 0; position: relative; z-index: 1;">
-    <div class="toggle-container" style="background: white; border-radius: 25px; padding: 4px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 2px solid #e2e8f0; display: flex; position: relative; overflow: hidden;">
-      <div class="toggle-slider" style="position: absolute; top: 4px; left: 4px; width: calc(50% - 4px); height: calc(100% - 8px); background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); border-radius: 21px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);"></div>
-      <label class="mode-toggle single-toggle" style="padding: 14px 28px; border-radius: 21px; cursor: pointer; transition: all 0.3s ease; font-weight: 700; color: #475569; background: transparent; position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+  <div class="mode-toggle-wrapper">
+    <div class="toggle-container">
+      <div class="toggle-slider"></div>
+      <label class="mode-toggle single-toggle">
         <input type="radio" name="analysis_mode" value="single" checked style="display: none;">
-        <i data-lucide="package" style="width: 18px; height: 18px;"></i>
+        <i data-lucide="package" class="mode-toggle-icon"></i>
         <span>Single Item</span>
       </label>
-      <label class="mode-toggle multi-toggle" style="padding: 14px 28px; border-radius: 21px; cursor: pointer; transition: all 0.3s ease; font-weight: 700; color: #475569; background: transparent; position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+      <label class="mode-toggle multi-toggle">
         <input type="radio" name="analysis_mode" value="multi" style="display: none;">
-        <i data-lucide="layers" style="width: 18px; height: 18px;"></i>
+        <i data-lucide="layers" class="mode-toggle-icon"></i>
         <span>Multi Item</span>
       </label>
     </div>
@@ -620,7 +695,7 @@
         <span>Food Identification</span>
       </h3>
       <div id="resultsContent">
-        <p style="color: #94a3b8; font-style: italic; text-align: center; padding: 20px;">Upload or capture an image to identify the food</p>
+        <p class="results-placeholder">Upload or capture an image to identify the food</p>
       </div>
     </div>
   </div>
@@ -791,7 +866,7 @@ captureBtn.addEventListener("click", async () => {
 });
 
 function showPlaceholder() {
-  resultsContent.innerHTML = '<p style="color: #94a3b8; font-style: italic; text-align: center; padding: 20px;">Upload or capture an image to identify the food</p>';
+  resultsContent.innerHTML = '<p class="results-placeholder">Upload or capture an image to identify the food</p>';
 }
 
 function showLoading() {
@@ -1510,34 +1585,21 @@ function setupOverrideButton() {
     ).slice(0, 20); // Limit to 20 results
     
     if (filtered.length === 0) {
-      foodDropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; text-align: center;">No matching foods found</div>';
+      foodDropdown.innerHTML = '<div class="dropdown-empty">No matching foods found</div>';
       foodDropdown.style.display = 'block';
       return;
     }
     
     foodDropdown.innerHTML = filtered.map(food => `
-      <div class="food-dropdown-item" data-food="${food}" style="padding: 10px 12px; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9;">
+      <div class="food-dropdown-item" data-food="${food}">
         ${food.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
       </div>
     `).join('');
     
     foodDropdown.style.display = 'block';
     
-    // Add hover effects
     const items = foodDropdown.querySelectorAll('.food-dropdown-item');
     items.forEach(item => {
-      item.addEventListener('mouseenter', function() {
-        this.style.background = '#f8fafc';
-        this.style.color = '#8b5cf6';
-        this.style.fontWeight = '700';
-      });
-      
-      item.addEventListener('mouseleave', function() {
-        this.style.background = 'white';
-        this.style.color = '#0f172a';
-        this.style.fontWeight = '600';
-      });
-      
       item.addEventListener('click', function() {
         const selectedFood = this.dataset.food;
         overrideWithFood(selectedFood);
@@ -1665,34 +1727,21 @@ function setupOverrideButtonForIndex(index) {
     ).slice(0, 20); // Limit to 20 results
 
     if (filtered.length === 0) {
-      foodDropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; text-align: center;">No matching foods found</div>';
+      foodDropdown.innerHTML = '<div class="dropdown-empty">No matching foods found</div>';
       foodDropdown.style.display = 'block';
       return;
     }
 
     foodDropdown.innerHTML = filtered.map(food => `
-      <div class="food-dropdown-item" data-food="${food}" data-index="${index}" style="padding: 10px 12px; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9;">
+      <div class="food-dropdown-item" data-food="${food}" data-index="${index}">
         ${food.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
       </div>
     `).join('');
 
     foodDropdown.style.display = 'block';
 
-    // Add hover effects
     const items = foodDropdown.querySelectorAll('.food-dropdown-item');
     items.forEach(item => {
-      item.addEventListener('mouseenter', function() {
-        this.style.background = '#f8fafc';
-        this.style.color = '#8b5cf6';
-        this.style.fontWeight = '700';
-      });
-
-      item.addEventListener('mouseleave', function() {
-        this.style.background = 'white';
-        this.style.color = '#0f172a';
-        this.style.fontWeight = '600';
-      });
-
       item.addEventListener('click', function() {
         const selectedFood = this.dataset.food;
         const foodIndex = parseInt(this.dataset.index);
