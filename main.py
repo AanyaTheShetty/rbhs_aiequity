@@ -679,6 +679,38 @@ def override_food():
 @app.route("/api/chatbot", methods=['POST'])
 def chatbot():
     """Diabetes assistant chatbot endpoint"""
+    def is_retryable_error(error_text):
+        error_text = error_text.lower()
+        return (
+            'rate limit' in error_text or
+            'quota' in error_text or
+            'timeout' in error_text or
+            'temporarily unavailable' in error_text or
+            '429' in error_text or
+            '503' in error_text or
+            '500' in error_text
+        )
+
+    def extract_response_text(response):
+        # response.text can raise when model returns blocked/empty candidates.
+        try:
+            text = (response.text or "").strip()
+            if text:
+                return text
+        except Exception:
+            pass
+
+        try:
+            for candidate in (response.candidates or []):
+                parts = getattr(getattr(candidate, "content", None), "parts", []) or []
+                part_text = "".join(getattr(part, "text", "") for part in parts if getattr(part, "text", ""))
+                if part_text.strip():
+                    return part_text.strip()
+        except Exception:
+            pass
+
+        return ""
+
     try:
         data = request.get_json()
         
@@ -723,71 +755,76 @@ RESPONSE GUIDELINES:
 6. Provide practical, actionable advice when appropriate
 """
         
-        # Build conversation context
+        # Build conversation context and normalize roles for Gemini
         messages = []
-        
+
         # Add recent history (last 10 messages to keep context manageable)
         recent_history = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
         for msg in recent_history:
+            role = msg.get('role', 'user')
+            if role == 'assistant':
+                role = 'model'
+            if role not in ('user', 'model'):
+                role = 'user'
+            content = (msg.get('content') or '').strip()
+            if not content:
+                continue
             messages.append({
-                'role': msg['role'],
-                'parts': [msg['content']]
+                'role': role,
+                'parts': [content]
             })
         
-        # Generate response using Gemini with retry logic
-        model = genai.GenerativeModel(
-            "gemini-2.5-flash",
-            generation_config={
-                "response_mime_type": "text/plain",
-                "temperature": 0.7,
-                "max_output_tokens": 1024,  # Limit response length
-            },
-            system_instruction=system_prompt
-        )
-        
-        # Create chat session with history
-        chat = model.start_chat(history=messages)
-        
-        # Send the user's message with retry logic
+        # Generate response using Gemini with retry + model fallback
         response_text = None
-        try:
-            # Use direct chat.send_message with retry logic
-            max_retries = 3
-            initial_delay = 1
-            
-            for attempt in range(max_retries):
-                try:
-                    response = chat.send_message(user_message)
-                    response_text = response.text.strip()
-                    break  # Success, exit the loop
-                except Exception as e:
-                    error_msg = str(e).lower()
-                    
-                    # Check if it's a retryable error
-                    is_retryable = (
-                        'rate limit' in error_msg or
-                        'quota' in error_msg or
-                        'timeout' in error_msg or
-                        'temporarily unavailable' in error_msg or
-                        '429' in error_msg or
-                        '503' in error_msg or
-                        '500' in error_msg
-                    )
-                    
-                    if not is_retryable or attempt == max_retries - 1:
-                        # Not retryable or last attempt, raise the error
-                        raise
-                    
-                    # Calculate delay with exponential backoff
-                    delay = initial_delay * (2 ** attempt)
-                    print(f"Chatbot API attempt {attempt + 1} failed: {e}")
-                    print(f"Retrying in {delay} seconds...")
-                    time.sleep(delay)
-            
-            # Check if we got a response
-            if response_text is None:
-                raise Exception("Failed to get response from Gemini API")
-        except Exception as gemini_error:
+        last_error = None
+        model_candidates = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        for model_name in model_candidates:
+            try:
+                model = genai.GenerativeModel(
+                    model_name,
+                    generation_config={
+                        "response_mime_type": "text/plain",
+                        "temperature": 0.7,
+                        "max_output_tokens": 1024,
+                    },
+                    system_instruction=system_prompt
+                )
+                chat = model.start_chat(history=messages)
+
+                max_retries = 3
+                initial_delay = 1
+                for attempt in range(max_retries):
+                    try:
+                        response = chat.send_message(user_message)
+                        response_text = extract_response_text(response)
+                        if not response_text:
+                            response_text = (
+                                "I can help with that. Could you rephrase your question in one short sentence "
+                                "about glucose, food, medications, or symptoms?"
+                            )
+                        break
+                    except Exception as e:
+                        last_error = e
+                        if not is_retryable_error(str(e)) or attempt == max_retries - 1:
+                            raise
+                        delay = initial_delay * (2 ** attempt)
+                        print(f"Chatbot API attempt {attempt + 1} failed on {model_name}: {e}")
+                        print(f"Retrying in {delay} seconds...")
+                        time.sleep(delay)
+
+                if response_text:
+                    break
+            except Exception as model_error:
+                last_error = model_error
+                error_msg = str(model_error).lower()
+                # If the model itself is unavailable, try next model.
+                if 'not found' in error_msg or 'unsupported' in error_msg:
+                    print(f"Model {model_name} unavailable: {model_error}")
+                    continue
+                break
+
+        if not response_text:
+            gemini_error = last_error or Exception("Failed to get response from Gemini API")
             error_msg = str(gemini_error).lower()
             
             # Provide specific error messages based on error type
