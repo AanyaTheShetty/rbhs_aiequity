@@ -118,6 +118,58 @@
   letter-spacing: -0.02em;
 }
 
+.survey-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.survey-mode-btn {
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+}
+
+.survey-mode-btn.active {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #3b82f6;
+  color: #1e40af;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.survey-note {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+.survey-questions {
+  display: grid;
+  gap: 18px;
+}
+
+.question-card {
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.question-label {
+  text-align: left;
+  margin-bottom: 14px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
 .emoji-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -627,228 +679,15 @@
   
   <form id="symptomForm" class="symptom-form">
     <div class="form-section">
-      <label class="form-label">How are you feeling today?</label>
-      <div class="emoji-grid" id="feeling-row">
-        <button type="button" class="emoji-btn" data-value="Great" title="Great">
-          <i data-lucide="smile"></i>
-          <span class="emoji-btn-label">Great</span>
-        </button>
-        <button type="button" class="emoji-btn" data-value="Good" title="Good">
-          <i data-lucide="smile"></i>
-          <span class="emoji-btn-label">Good</span>
-        </button>
-        <button type="button" class="emoji-btn" data-value="Okay" title="Okay">
-          <i data-lucide="meh"></i>
-          <span class="emoji-btn-label">Okay</span>
-        </button>
-        <button type="button" class="emoji-btn" data-value="Bad" title="Bad">
-          <i data-lucide="frown"></i>
-          <span class="emoji-btn-label">Bad</span>
-        </button>
-        <button type="button" class="emoji-btn" data-value="Terrible" title="Terrible">
-          <i data-lucide="frown"></i>
-          <span class="emoji-btn-label">Terrible</span>
-        </button>
+      <label class="form-label">Choose Survey Type</label>
+      <div class="survey-mode">
+        <button type="button" class="survey-mode-btn active" id="shortSurveyBtn">Short Survey</button>
+        <button type="button" class="survey-mode-btn" id="longSurveyBtn">Long Survey</button>
       </div>
-    </div>
-    
-    <div class="form-section">
-      <label class="form-label">Do you have a fever?</label>
-      <div class="yn-grid" id="fever-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="fever-severity" class="severity-select">
-        <label for="fever_severity">Severity:</label>
-        <select name="fever_severity" id="fever_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-    
-    <div class="form-section">
-      <label class="form-label">Do you have a cough?</label>
-      <div class="yn-grid" id="cough-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="cough-severity" class="severity-select">
-        <label for="cough_severity">Severity:</label>
-        <select name="cough_severity" id="cough_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-    
-    <div class="form-section">
-      <label class="form-label">Are you experiencing fatigue?</label>
-      <div class="yn-grid" id="fatigue-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="fatigue-severity" class="severity-select">
-        <label for="fatigue_severity">Severity:</label>
-        <select name="fatigue_severity" id="fatigue_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
+      <p class="survey-note" id="surveyNote">Short survey: focused questions for daily diabetes monitoring.</p>
     </div>
 
-    <div class="form-section">
-      <label class="form-label">Do you have a headache?</label>
-      <div class="yn-grid" id="headache-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="headache-severity" class="severity-select">
-        <label for="headache_severity">Severity:</label>
-        <select name="headache_severity" id="headache_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Are you feeling dizzy or lightheaded?</label>
-      <div class="yn-grid" id="dizziness-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="dizziness-severity" class="severity-select">
-        <label for="dizziness_severity">Severity:</label>
-        <select name="dizziness_severity" id="dizziness_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Do you have nausea?</label>
-      <div class="yn-grid" id="nausea-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="nausea-severity" class="severity-select">
-        <label for="nausea_severity">Severity:</label>
-        <select name="nausea_severity" id="nausea_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Are you very thirsty?</label>
-      <div class="yn-grid" id="thirst-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="thirst-severity" class="severity-select">
-        <label for="thirst_severity">Severity:</label>
-        <select name="thirst_severity" id="thirst_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Are you urinating more often than usual?</label>
-      <div class="yn-grid" id="urination-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="urination-severity" class="severity-select">
-        <label for="urination_severity">Severity:</label>
-        <select name="urination_severity" id="urination_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Do you have blurry vision?</label>
-      <div class="yn-grid" id="blurredVision-row">
-        <button type="button" class="yn-btn" data-value="Yes">
-          <i data-lucide="check"></i>
-          <span>Yes</span>
-        </button>
-        <button type="button" class="yn-btn" data-value="No">
-          <i data-lucide="x"></i>
-          <span>No</span>
-        </button>
-      </div>
-      <div id="blurredVision-severity" class="severity-select">
-        <label for="blurredVision_severity">Severity:</label>
-        <select name="blurredVision_severity" id="blurredVision_severity">
-          <option value="Mild">Mild</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Severe">Severe</option>
-        </select>
-      </div>
-    </div>
+    <div id="surveyQuestions" class="survey-questions"></div>
     
     <div class="form-section">
       <label class="form-label">Other symptoms</label>
@@ -893,37 +732,118 @@
 // Initialize Lucide icons
 lucide.createIcons();
 
-const trackedSymptoms = [
-  { key: 'fever', label: 'Fever' },
-  { key: 'cough', label: 'Cough' },
-  { key: 'fatigue', label: 'Fatigue' },
-  { key: 'headache', label: 'Headache' },
-  { key: 'dizziness', label: 'Dizziness/Lightheadedness' },
-  { key: 'nausea', label: 'Nausea' },
-  { key: 'thirst', label: 'Excessive Thirst' },
-  { key: 'urination', label: 'Frequent Urination' },
-  { key: 'blurredVision', label: 'Blurry Vision' }
+const longSurveyQuestions = [
+  { id: 'q1', text: 'Lack of energy?' },
+  { id: 'q2', text: 'Aching calves when walking?' },
+  { id: 'q3', text: 'Numbness (loss of sensation) in the feet?' },
+  { id: 'q4', text: 'An overall sense of fatigue?' },
+  { id: 'q5', text: 'Shortness of breath at night?' },
+  { id: 'q6', text: 'Sleepiness or drowsiness?' },
+  { id: 'q7', text: 'Difficulty concentrating?' },
+  { id: 'q8', text: 'Moodiness?' },
+  { id: 'q9', text: 'Numbness (loss of sensation) in the hands?' },
+  { id: 'q10', text: 'Persistently blurred vision (even with glasses on)?' },
+  { id: 'q11', text: 'Tingling sensations in the limbs at night?' },
+  { id: 'q12', text: 'Very thirsty?' },
+  { id: 'q13', text: 'Palpitations or pounding in the heart region?' },
+  { id: 'q14', text: 'Deteriorating vision?' },
+  { id: 'q15', text: 'Burning pain in the calves at night?' },
+  { id: 'q16', text: 'Dry mouth?' },
+  { id: 'q17', text: 'Increasing fatigue during the course of the day?' },
+  { id: 'q18', text: 'Flashes or black spots in the field of vision?' },
+  { id: 'q19', text: 'Irritability just before a meal?' },
+  { id: 'q20', text: 'Fatigue in the morning when getting up?' },
+  { id: 'q21', text: 'Shooting pains in the legs?' },
+  { id: 'q22', text: 'Alternating clear and blurred vision?' },
+  { id: 'q23', text: 'Frequent need to empty your bladder?' },
+  { id: 'q24', text: 'Pains in the chest or heart region?' },
+  { id: 'q25', text: 'Burning pain in the legs during the day?' },
+  { id: 'q26', text: 'Tingling or prickling sensations in the hands or fingers?' },
+  { id: 'q27', text: 'Easily irritated or annoyed?' },
+  { id: 'q28', text: 'Sudden deterioration of vision?' },
+  { id: 'q29', text: 'Off feeling in the (lower) legs or feet when touched?' },
+  { id: 'q30', text: 'Shortness of breath during physical exertion?' },
+  { id: 'q31', text: 'Fuzzy feeling in the head (difficulty thinking clearly)?' },
+  { id: 'q32', text: 'Drinking a lot (all sorts of beverages)?' },
+  { id: 'q33', text: 'Difficulty paying attention?' },
+  { id: 'q34', text: 'Tingling or prickling sensations in the lower legs or feet?' },
+  { id: 'q35', text: 'Any other symptoms (35)?' },
+  { id: 'q36', text: 'Any other symptoms (36)?' },
+  { id: 'q37', text: 'Any other symptoms (37)?' }
 ];
 
-document.querySelectorAll('.emoji-btn').forEach(btn => 
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-    this.classList.add('selected');
-  })
-);
+const shortSurveyQuestionIds = ['q1', 'q4', 'q10', 'q12', 'q16', 'q23', 'q24', 'q30', 'q31', 'q34'];
 
-document.querySelectorAll('.yn-grid').forEach(row => 
-  row.querySelectorAll('.yn-btn').forEach(btn => {
-    btn.onclick = () => {
-      row.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      const severityDiv = document.getElementById(row.id.replace('-row', '-severity'));
-      if (severityDiv) {
-        severityDiv.style.display = btn.getAttribute('data-value') === 'Yes' ? 'block' : 'none';
-      }
-    };
-  })
-);
+let activeSurveyMode = 'short';
+
+function getActiveQuestions() {
+  if (activeSurveyMode === 'long') return longSurveyQuestions;
+  return longSurveyQuestions.filter(q => shortSurveyQuestionIds.includes(q.id));
+}
+
+function renderSurveyQuestions() {
+  const container = document.getElementById('surveyQuestions');
+  const questions = getActiveQuestions();
+  container.innerHTML = questions.map((q, index) => `
+    <div class="question-card">
+      <label class="form-label question-label">${index + 1}. ${q.text}</label>
+      <div class="yn-grid" id="${q.id}-row">
+        <button type="button" class="yn-btn" data-value="Yes">
+          <i data-lucide="check"></i>
+          <span>Yes</span>
+        </button>
+        <button type="button" class="yn-btn" data-value="No">
+          <i data-lucide="x"></i>
+          <span>No</span>
+        </button>
+      </div>
+      <div id="${q.id}-severity" class="severity-select">
+        <label for="${q.id}_severity">How troublesome?</label>
+        <select id="${q.id}_severity">
+          <option value="Not at all">Not at all</option>
+          <option value="A little">A little</option>
+          <option value="Moderately" selected>Moderately</option>
+          <option value="Very">Very</option>
+          <option value="Extremely">Extremely</option>
+        </select>
+      </div>
+    </div>
+  `).join('');
+
+  wireQuestionButtons();
+  lucide.createIcons();
+}
+
+function wireQuestionButtons() {
+  document.querySelectorAll('#surveyQuestions .yn-grid').forEach(row =>
+    row.querySelectorAll('.yn-btn').forEach(btn => {
+      btn.onclick = () => {
+        row.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        const severityDiv = document.getElementById(row.id.replace('-row', '-severity'));
+        if (severityDiv) {
+          severityDiv.style.display = btn.getAttribute('data-value') === 'Yes' ? 'block' : 'none';
+        }
+      };
+    })
+  );
+}
+
+function setSurveyMode(mode) {
+  activeSurveyMode = mode;
+  document.getElementById('shortSurveyBtn').classList.toggle('active', mode === 'short');
+  document.getElementById('longSurveyBtn').classList.toggle('active', mode === 'long');
+  document.getElementById('surveyNote').textContent =
+    mode === 'short'
+      ? 'Short survey: focused questions for daily diabetes monitoring.'
+      : 'Long survey: full professional complication questionnaire (all 37 items).';
+  renderSurveyQuestions();
+}
+
+document.getElementById('shortSurveyBtn').addEventListener('click', () => setSurveyMode('short'));
+document.getElementById('longSurveyBtn').addEventListener('click', () => setSurveyMode('long'));
+
+setSurveyMode('short');
 
 function getTodayDate() {
   const t = new Date();
@@ -948,28 +868,39 @@ function loadSymptoms() {
 
 document.getElementById('symptomForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  
-  const selectedFeeling = document.querySelector('.emoji-btn.selected');
-  const feeling = selectedFeeling ? selectedFeeling.getAttribute('data-value') : null;
-  
+
+  const questions = getActiveQuestions();
   const data = {
-    feeling: feeling,
+    surveyMode: activeSurveyMode,
+    responses: {},
     other: document.getElementById('other').value.trim()
   };
 
-  trackedSymptoms.forEach(symptom => {
-    const selectedBtn = document.querySelector(`#${symptom.key}-row .yn-btn.selected`);
-    data[symptom.key] = null;
-    data[`${symptom.key}Severity`] = null;
-
-    if (selectedBtn) {
-      data[symptom.key] = selectedBtn.getAttribute('data-value');
-      if (data[symptom.key] === 'Yes') {
-        const severityInput = document.getElementById(`${symptom.key}_severity`);
-        data[`${symptom.key}Severity`] = severityInput ? severityInput.value : 'Mild';
-      }
+  let unanswered = 0;
+  questions.forEach(q => {
+    const selectedBtn = document.querySelector(`#${q.id}-row .yn-btn.selected`);
+    if (!selectedBtn) {
+      unanswered += 1;
+      return;
     }
+
+    const occurred = selectedBtn.getAttribute('data-value');
+    const severityInput = document.getElementById(`${q.id}_severity`);
+    data.responses[q.id] = {
+      question: q.text,
+      occurred: occurred,
+      severity: occurred === 'Yes' && severityInput ? severityInput.value : null
+    };
   });
+
+  if (unanswered > 0) {
+    showNotification({
+      type: 'warning',
+      title: 'Incomplete Survey',
+      message: `Please answer all questions before saving. ${unanswered} question(s) remaining.`
+    });
+    return;
+  }
   
   saveSymptoms(data);
   
@@ -978,8 +909,8 @@ document.getElementById('symptomForm').addEventListener('submit', function(e) {
   lucide.createIcons(); // Re-initialize icons in toast
   setTimeout(() => { toast.style.display = 'none'; }, 3000);
   
-  document.querySelectorAll('.emoji-btn, .yn-btn').forEach(b => b.classList.remove('selected'));
-  document.querySelectorAll('.severity-select').forEach(c => c.style.display = 'none');
+  document.querySelectorAll('#surveyQuestions .yn-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('#surveyQuestions .severity-select').forEach(c => c.style.display = 'none');
   document.getElementById('other').value = '';
   
   window.dispatchEvent(new Event('storage'));
@@ -998,12 +929,19 @@ function openHistoryModal() {
       const d = history[date];
       html += `<div class="history-item">`;
       html += `<div class="history-date">${formatDate(date)}</div>`;
-      if (d.feeling) html += `<div class="history-detail"><strong>Overall Feeling:</strong> ${d.feeling}</div>`;
-      trackedSymptoms.forEach(symptom => {
-        if (d[symptom.key]) {
-          html += `<div class="history-detail"><strong>${symptom.label}:</strong> ${d[symptom.key] === 'Yes' ? d[`${symptom.key}Severity`] : 'None'}</div>`;
-        }
-      });
+      if (d.surveyMode) html += `<div class="history-detail"><strong>Survey:</strong> ${d.surveyMode === 'short' ? 'Short' : 'Long'}</div>`;
+      if (d.responses) {
+        const responses = Object.values(d.responses);
+        const occurred = responses.filter(r => r && r.occurred === 'Yes');
+        html += `<div class="history-detail"><strong>Questions Answered:</strong> ${responses.length}</div>`;
+        html += `<div class="history-detail"><strong>Symptoms Reported:</strong> ${occurred.length}</div>`;
+        occurred.forEach(r => {
+          html += `<div class="history-detail"><strong>${r.question}</strong> ${r.severity ? `- ${r.severity}` : ''}</div>`;
+        });
+      } else {
+        // Legacy fallback for older saved formats
+        if (d.feeling) html += `<div class="history-detail"><strong>Overall Feeling:</strong> ${d.feeling}</div>`;
+      }
       if (d.other) html += `<div class="history-detail"><strong>Other:</strong> ${d.other}</div>`;
       html += `</div>`;
     });
@@ -1036,14 +974,26 @@ function exportToPDF() {
       doc.text(formatDate(date), 20, y);
       y += 10;
       doc.setFontSize(11);
-      if (d.feeling) { doc.text(`Overall Feeling: ${d.feeling}`, 25, y); y += 7; }
-      trackedSymptoms.forEach(symptom => {
-        if (d[symptom.key]) {
-          doc.text(`${symptom.label}: ${d[symptom.key] === 'Yes' ? d[`${symptom.key}Severity`] : 'None'}`, 25, y);
-          y += 7;
-        }
-      });
-      if (d.other) { doc.text(`Other: ${d.other}`, 25, y); y += 7; }
+      if (d.surveyMode) { doc.text(`Survey: ${d.surveyMode === 'short' ? 'Short' : 'Long'}`, 25, y); y += 7; }
+      if (d.responses) {
+        const responses = Object.values(d.responses);
+        const occurred = responses.filter(r => r && r.occurred === 'Yes');
+        doc.text(`Questions answered: ${responses.length}`, 25, y); y += 7;
+        doc.text(`Symptoms reported: ${occurred.length}`, 25, y); y += 7;
+        occurred.forEach(r => {
+          const line = `${r.question}${r.severity ? ` - ${r.severity}` : ''}`;
+          const wrapped = doc.splitTextToSize(line, 160);
+          doc.text(wrapped, 25, y);
+          y += (wrapped.length * 6);
+        });
+      } else if (d.feeling) {
+        doc.text(`Overall Feeling: ${d.feeling}`, 25, y); y += 7;
+      }
+      if (d.other) {
+        const otherWrapped = doc.splitTextToSize(`Other: ${d.other}`, 160);
+        doc.text(otherWrapped, 25, y);
+        y += (otherWrapped.length * 6);
+      }
       y += 5;
       if (y > 270) {
         doc.addPage();

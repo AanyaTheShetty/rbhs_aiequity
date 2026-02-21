@@ -555,28 +555,31 @@ function displayTodaysSymptoms() {
     const today = getTodayDate();
     const s = loadSymptoms();
     const contentDiv = document.getElementById('todaysSymptomsContent');
-    const trackedSymptoms = [
-        { key: 'fever', label: 'Fever' },
-        { key: 'cough', label: 'Cough' },
-        { key: 'fatigue', label: 'Fatigue' },
-        { key: 'headache', label: 'Headache' },
-        { key: 'dizziness', label: 'Dizziness/Lightheadedness' },
-        { key: 'nausea', label: 'Nausea' },
-        { key: 'thirst', label: 'Excessive Thirst' },
-        { key: 'urination', label: 'Frequent Urination' },
-        { key: 'blurredVision', label: 'Blurry Vision' }
-    ];
 
     if (s[today]) {
         const dt = s[today];
         let html = '';
-        if (dt.feeling) html += `<div class="symptom-item"><div class="item-label">Overall Feeling</div><div class="item-value">${dt.feeling}</div></div>`;
-        trackedSymptoms.forEach(symptom => {
-            if (dt[symptom.key]) {
-                html += `<div class="symptom-item"><div class="item-label">${symptom.label}</div><div class="item-value">${dt[symptom.key] === 'Yes' ? dt[`${symptom.key}Severity`] : 'None'}</div></div>`;
+        if (dt.responses) {
+            const responses = Object.values(dt.responses);
+            const occurred = responses.filter(r => r && r.occurred === 'Yes');
+            const veryHigh = occurred.filter(r => r.severity === 'Very' || r.severity === 'Extremely');
+            html += `<div class="symptom-item"><div class="item-label">Survey Mode</div><div class="item-value">${dt.surveyMode === 'long' ? 'Long (37)' : 'Short'}</div></div>`;
+            html += `<div class="symptom-item"><div class="item-label">Symptoms Reported</div><div class="item-value">${occurred.length}</div></div>`;
+            if (veryHigh.length > 0) {
+                html += `<div class="symptom-item"><div class="item-label">High Severity</div><div class="item-value">${veryHigh.length}</div></div>`;
             }
-        });
+            occurred.slice(0, 4).forEach(r => {
+                html += `<div class="symptom-item"><div class="item-label">${r.question}</div><div class="item-value">${r.severity || 'Reported'}</div></div>`;
+            });
+            if (occurred.length === 0) {
+                html += `<div class="symptom-item"><div class="item-label">Status</div><div class="item-value">No symptoms reported</div></div>`;
+            }
+        } else if (dt.feeling) {
+            // Legacy fallback for old entries
+            html += `<div class="symptom-item"><div class="item-label">Overall Feeling</div><div class="item-value">${dt.feeling}</div></div>`;
+        }
         if (dt.other) html += `<div class="symptom-item"><div class="item-label">Other</div><div class="item-value">${dt.other}</div></div>`;
+        if (!html) html = '<div class="widget-empty">No symptom details recorded for today.</div>';
         contentDiv.innerHTML = html;
     } else {
         contentDiv.innerHTML = '<div class="widget-empty">No symptoms recorded today.</div>';
