@@ -154,6 +154,7 @@
 .survey-questions {
   display: grid;
   gap: 18px;
+  margin-bottom: 18px;
 }
 
 .question-card {
@@ -684,7 +685,7 @@
         <button type="button" class="survey-mode-btn active" id="shortSurveyBtn">Short Survey</button>
         <button type="button" class="survey-mode-btn" id="longSurveyBtn">Long Survey</button>
       </div>
-      <p class="survey-note" id="surveyNote">Short survey: focused questions for daily diabetes monitoring.</p>
+      <p class="survey-note" id="surveyNote">10 questions</p>
     </div>
 
     <div id="surveyQuestions" class="survey-questions"></div>
@@ -833,10 +834,7 @@ function setSurveyMode(mode) {
   activeSurveyMode = mode;
   document.getElementById('shortSurveyBtn').classList.toggle('active', mode === 'short');
   document.getElementById('longSurveyBtn').classList.toggle('active', mode === 'long');
-  document.getElementById('surveyNote').textContent =
-    mode === 'short'
-      ? 'Short survey: focused questions for daily diabetes monitoring.'
-      : 'Long survey: full professional complication questionnaire (all 37 items).';
+  document.getElementById('surveyNote').textContent = mode === 'short' ? '10 questions' : '37 questions';
   renderSurveyQuestions();
 }
 
